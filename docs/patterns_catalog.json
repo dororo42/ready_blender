@@ -1,0 +1,1535 @@
+[
+ {
+  "file": "Brusselator.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Brusselator",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "The Brusselator is a theoretical model for a type of autocatalytic chemical reaction. http://en.wikipedia.org/wiki/Brusselator Initially the system...",
+  "params": "timestep=0.01, D_a=0.05, D_b=0.005, k1=1.0, k2=1.0, k3=1.0, k4=1.0, A=1.0, B=3.0",
+  "formula": "delta_a = D_a * laplacian_a + k1*A + k2*a*a*b - k3*B*a - k4*a;         delta_b = D_b * laplacian_b        - k2*a*a*b + k",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Schlogl.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schlogl",
+  "n_chem": 1,
+  "init": "unknown",
+  "desc": "Schlögl’s model is the canonical example of a chemical reaction system that exhibits bistability. Schlögl, F. (1972) Chemical reaction models for n...",
+  "params": "timestep=0.1",
+  "formula": "delta_a = laplacian_a + a - a*a*a;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "bunny.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 2,
+  "init": "unknown",
+  "desc": "Gray-Scott running on the surface of the Stanford Bunny. Mesh courtesy of Greg Turk and Marc Levoy. link",
+  "params": "timestep=1.0, D_a=0.082, D_b=0.041, k=0.06, F=0.035",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b + a*b*b - (F+k)*b;",
+  "_gs_std_params": true
+ },
+ {
+  "file": "heat_equation.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Heat equation",
+  "n_chem": 1,
+  "init": "unknown",
+  "desc": "The heat equation , also known as the diffusion equation, describes multiple phenomena including the spreading-out of heat in a solid body and the ...",
+  "params": "timestep=0.1",
+  "formula": "delta_a = laplacian_a;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "heat_equation_interpolation.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Heat equation",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "Here the heat equation applies to chemical a but only in those places where chemical b is zero. This has the effect of locking certain areas to the...",
+  "params": "timestep=0.2",
+  "formula": "delta_a = laplacian_a * step(-0.01f,-b);",
+  "_gs_std_params": false
+ },
+ {
+  "file": "kernel_test.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "Kernel test",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "This is an example rule where we give the whole OpenCL kernel instead of just a formula. See also Conway_life.vti. Note that we can use float (or f...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "lion.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 2,
+  "init": "unknown",
+  "desc": "Gray-Scott running on the surface of a lion mesh. Mesh courtesy of Robert Sumner and Jovan Popovic. link",
+  "params": "timestep=1.0, D_a=0.082, D_b=0.041, k=0.064, F=0.035",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b + a*b*b - (F+k)*b;",
+  "_gs_std_params": true
+ },
+ {
+  "file": "oregonator.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Oregonator",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "The two-variable Oregonator model of the Belousov–Zhabotinsky reaction .",
+  "params": "timestep=0.0001, D_a=1.0, D_b=0.6, epsilon=0.01, f=1.4, q=0.002, dx=0.2",
+  "formula": "delta_a = D_a*laplacian_a/(dx*dx) + (a - a*a - f*b*(a-q)/(a+q)) / epsilon;         delta_b = D_b*laplacian_b/(dx*dx) + a",
+  "_gs_std_params": false
+ },
+ {
+  "file": "parameter_modulation_demo.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "Using an extra chemical (c) to modulate the parameters of a Gray-Scott system.",
+  "params": "timestep=1.0, D_a=0.082, D_b=0.041, k=0.064, F=0.035",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b + a*b*b - (F+k-c*0.005f)*b;",
+  "_gs_std_params": true
+ },
+ {
+  "file": "parameter_modulation_demo2.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "Using an extra chemical (c) to modulate the parameters of a Gray-Scott system.",
+  "params": "timestep=1.0, D_a=0.082, D_b=0.041, k=0.055, F=0.035",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b + a*b*b - (F+k+c*0.02f)*b;",
+  "_gs_std_params": true
+ },
+ {
+  "file": "wave_equation.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Wave equation",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "Wave equation. Here 'a' stores the value, 'b' stores the rate of change. The wave equation says that the second derivative (the rate of change of t...",
+  "params": "timestep=0.1, damping=0.2, vis=15.0",
+  "formula": "delta_a = b/vis + damping*laplacian_a;         delta_b = laplacian_a*vis;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\Bays_3D.vti",
+  "type": "vti",
+  "dims": [
+   64,
+   64,
+   64
+  ],
+  "rule_type": "kernel",
+  "rule_name": "3D-CA rule 4,5/5",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "The kernel code implements a 3D cellular automaton for rule 4,5/5 in the notation used by Carter Bays and his colleagues (see applet here ). The in...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\Buss_hex.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "HexBuss",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Frank Buss' Hex Cellular Automaton, initialized with a glider gun and a rake. http://www.frank-buss.de/automaton/hexautomaton.html",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\Conway_life.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "B3/S23",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Conway's Game of Life, just because we can. Not an efficient way to do this, since everything is stored as floats.",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\hex_B2oS2m34_gliders.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "B2oS2m34",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Gliders in the hexagonal rule B2o/S2m34, by Paul Callahan http://www.radicaleye.com/lifepage/hexrule.txt Based on a Python transition function by A...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\larger-than-life.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "Larger-than-Life",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Larger than Life, by Kellie Michele Evans . The parameter R controls the distance over which the neighbor count is taken. The two ranges [b1,b2] an...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\life_torus.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "B3/S23",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Conway's Game of Life, implemented on a torus.",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\tri_life.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "TriLife_B45S34",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "A period-7 glider in the B45/S34 rule on a triangular grid. Based on the work of Carter Bays: http://www.cse.sc.edu/~bays/trilife3/home.html",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\PenroseTilings\\Goucher_glider.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "Goucher's Glider",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Adam Goucher's Penrose glider rule. See discussion here: http://news.ycombinator.com/item?id=4298515",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\PenroseTilings\\Goucher_loops.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "Goucher's loops",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Adam Goucher's gliders on a darts-and-kites tiling run in loops. His paper is to appear in the Journal of Cellular Automata: \"Gliders in cellular a...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\PenroseTilings\\Imai_glider_B2SC4.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "B2SC4",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Gliders in a Generations-like rule (B2/S/C4) on a Penrose tiling. Discovered by Katsunobu Imai (see http://youtu.be/g0g2q0hecs8 ).",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\PenroseTilings\\life.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "B3/S23",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Life on a Penrose tiling. Various still-lives and oscillators are seen. No gliders have yet been found. Inspired by the work of Nick Owens and Susa...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\PenroseTilings\\life_oscillators.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "kernel",
+  "rule_name": "B3/S23",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Some of the oscillators in Conway's Game of Life on a Penrose tiling. From the paper by Nick Owens and Susan Stepney .",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\Salt\\salt2D_demo.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "Salt_2D",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Miller and Fredkin's Salt CA, in 2D. From: \"Circular Motion of Strings in Cellular Automata, and Other Surprises\", Daniel B. Miller and Edward Fred...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CellularAutomata\\Salt\\salt3D_circular330.vti",
+  "type": "vti",
+  "dims": [
+   32,
+   32,
+   32
+  ],
+  "rule_type": "kernel",
+  "rule_name": "Salt_3D",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Miller and Fredkin's Salt CA, in 2D. From: \"Circular Motion of Strings in Cellular Automata, and Other Surprises\", Daniel B. Miller and Edward Fred...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "CPU-only\\grayscott_1D.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   1,
+   1
+  ],
+  "rule_type": "inbuilt",
+  "rule_name": "Gray-Scott",
+  "n_chem": 0,
+  "init": "nonzero",
+  "desc": "Self-replicating spots in one dimension. This example uses an inbuilt implementation (currently only Gray-Scott is available) and so the formula ca...",
+  "params": "timestep=1.0, D_a=0.082, D_b=0.041, k=0.06, F=0.035",
+  "formula": "",
+  "_gs_std_params": true
+ },
+ {
+  "file": "CPU-only\\grayscott_2D.vti",
+  "type": "vti",
+  "dims": [
+   64,
+   64,
+   1
+  ],
+  "rule_type": "inbuilt",
+  "rule_name": "Gray-Scott",
+  "n_chem": 0,
+  "init": "zero",
+  "desc": "Self-replicating spots in two dimensions. This example uses an inbuilt implementation (currently only Gray-Scott is available) and so the formula c...",
+  "params": "timestep=1.0, D_a=0.082, D_b=0.041, k=0.064, F=0.035",
+  "formula": "",
+  "_gs_std_params": true
+ },
+ {
+  "file": "CPU-only\\grayscott_3D.vti",
+  "type": "vti",
+  "dims": [
+   30,
+   25,
+   20
+  ],
+  "rule_type": "inbuilt",
+  "rule_name": "Gray-Scott",
+  "n_chem": 0,
+  "init": "zero",
+  "desc": "The Gray-Scott rule in three dimensions. This example uses an inbuilt implementation (currently only Gray-Scott is available) and so the formula ca...",
+  "params": "timestep=1.0, D_a=0.082, D_b=0.041, k=0.064, F=0.035",
+  "formula": "",
+  "_gs_std_params": true
+ },
+ {
+  "file": "Experiments\\cglrd_ramps_example_djw.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   1024,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Ginzburg-Landau",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "The complex Ginzburg-Landau equation describes a vast variety of phenomena from nonlinear waves to second-order phase transitions, from superconduc...",
+  "params": "",
+  "formula": "//make the ramp d = ( fabs(  ( ( get_global_id(0) * 1.0f) / ( get_global_size(0) * 1.0f ) )  - 0.5f ) * 2.0f); // apply ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Experiments\\gladman_vermiformSolitons.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "gladman",
+  "n_chem": 0,
+  "init": "zero",
+  "desc": "Simon Gladman: \"After my recent experiments with cubic coupling different reaction diffusion models, I thought I'd return to my roots and see what ...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Experiments\\grayscott-historyWaveDC_solitonsAndWorms_init.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   512,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "Gray-Scott-History-Wave formula, implemented by Dan Wills based on pre-existing pattern code in Ready. A Gray-Scott reaction-diffusion system is si...",
+  "params": "",
+  "formula": "delta_a = (D_a + c*c_to_Da + (d-wave_DC_value)*wave_to_Da) * laplacian_a - pow(a,(float4)a_pow)*pow(b,(float4)b_pow) + (",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Experiments\\grayscott-historyWave_coralGrow_djw.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "Gray-Scott-History-Wave formula, implemented by Dan Wills starting from pre-existing pattern code in Ready. A Gray-Scott reaction-diffusion system ...",
+  "params": "",
+  "formula": "delta_a = (D_a + c*c_to_Da + (d-wave_DC_value)*wave_to_Da) * laplacian_a - pow(a,(float4)a_pow)*pow(b,(float4)b_pow) + (",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Experiments\\grayscott-historyWave_fuseWorms.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "Gray-Scott-History-Wave formula, implemented by Dan Wills based on pre-existing pattern code in Ready. A Gray-Scott reaction-diffusion system is si...",
+  "params": "",
+  "formula": "delta_a = (D_a + c*c_to_Da + d*wave_to_Da) * laplacian_a - a*b*b + (F + c_to_F*c + d*wave_to_F)*(1.0f-a) + c*c_to_a + d*",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Experiments\\grayscott-historyWave_moreLifelike.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "Gray-Scott-History-Wave formula, implemented by Dan Wills based on pre-existing pattern code in Ready. A Gray-Scott reaction-diffusion system is si...",
+  "params": "",
+  "formula": "delta_a = (D_a + c*c_to_Da + (d-wave_DC_value)*wave_to_Da) * laplacian_a - pow(a,(float4)a_pow)*pow(b,(float4)b_pow) + (",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Experiments\\mutually-catalytic_spots.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "coupled Gray-Scott",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "Mutually-catalytic spot systems. Created by Tim Hutton. Two coupled Gray-Scott systems: a,b and c,d. The large a,b spots can only replicate when fu...",
+  "params": "timestep=0.06, diff_ab=2.0, diff_cd=0.041, k1=0.0648, F1=0.03, k2=0.08, F2=0.035, b_fee...",
+  "formula": "delta_a = 2.0f * diff_ab * laplacian_a - a*b*b + F1*(1.0f-a);         delta_b = diff_ab * laplacian_b + a*b*b - (F1+k1-d",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Experiments\\orbits_explodey_init.djw.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   512,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Orbit",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "This is an rd formula that uses an iteration step inspired by an orbits-fractal step (eg Mandelbrot/Julia). It treats reagents a and b as a complex...",
+  "params": "",
+  "formula": "c = pow((a+constRealInner)*(a+constRealInner) + (b+constImagInner)*(b+constImagInner), mag_power) * mag_amp + mag_zeroPt",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Experiments\\orbits_sharpWaves-init_djw.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   512,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Orbit",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "This is an rd formula that uses an iteration step inspired by an orbits-fractal step (eg Mandelbrot/Julia). It treats reagents a and b as a complex...",
+  "params": "",
+  "formula": "c = pow((a+constRealInner)*(a+constRealInner) + (b+constImagInner)*(b+constImagInner), mag_power) * mag_amp + mag_zeroPt",
+  "_gs_std_params": false
+ },
+ {
+  "file": "FitzHugh-Nagumo\\Ising_regime.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Fitzhugh-Nagumo",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "A reproduction of Figure 3 from Hagberg and Meron (1994) . They refer to this region of the parameter space as the 'Ising regime'. Small variations...",
+  "params": "timestep=0.02, a0=-0.1, a1=2.0, epsilon=0.05, delta=4.0, k1=1.0, k2=0.0, k3=1.0",
+  "formula": "delta_a = k1*a - k2*a*a - a*a*a - b + laplacian_a;         delta_b = epsilon*(k3*a - a1*b - a0) + delta*laplacian_b;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "FitzHugh-Nagumo\\pulsate.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   64
+  ],
+  "rule_type": "formula",
+  "rule_name": "Fitzhugh-Nagumo",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "",
+  "params": "timestep=0.02, a0=-0.1, a1=2.0, epsilon=0.018, delta=3.0, k1=1.0, k2=0.0, k3=1.0",
+  "formula": "delta_a = k1*a - k2*a*a - a*a*a - b + laplacian_a;         delta_b = epsilon*(k3*a - a1*b - a0) + delta*laplacian_b;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "FitzHugh-Nagumo\\spiral_turbulence.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Fitzhugh-Nagumo",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "See the paper: From Labyrinthine Patterns to Spiral Turbulence",
+  "params": "timestep=0.02, a0=-0.1, a1=2.0, epsilon=0.014, delta=2.8, k1=1.0, k2=0.0, k3=1.0",
+  "formula": "delta_a = k1*a - k2*a*a - a*a*a - b + laplacian_a;         delta_b = epsilon*(k3*a - a1*b - a0) + delta*laplacian_b;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "FitzHugh-Nagumo\\squid_axon.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   1,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Fitzhugh-Nagumo",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "Travelling waves in a mathematical model of excitable media, such as heart tissue and nerve fibre. Based on a model originally developed from the s...",
+  "params": "timestep=0.02, a0=-0.1, a1=2.0, epsilon=0.1, delta=0.0, k1=1.0, k2=0.0, k3=1.0",
+  "formula": "delta_a = k1*a - k2*a*a - a*a*a - b + laplacian_a;         delta_b = epsilon*(k3*a - a1*b - a0) + delta*laplacian_b;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "FitzHugh-Nagumo\\tip-splitting.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Fitzhugh-Nagumo",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "A phenomenon called 'tip-splitting' or 'bifurcating stripes'. Recently observed in the growing palate of mice: Periodic stripe formation by a Turin...",
+  "params": "timestep=0.02, a0=-0.1, a1=2.0, epsilon=0.05, delta=4.0, k1=1.0, k2=0.0, k3=1.0",
+  "formula": "delta_a = k1*a - k2*a*a - a*a*a - b + laplacian_a;         delta_b = epsilon*(k3*a - a1*b - a0) + delta*laplacian_b;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Ginzburg-Landau\\complex_Ginzburg-Landau.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Ginzburg-Landau",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "\"The complex Ginzburg-Landau equation describes a vast variety of phenomena from nonlinear waves to second-order phase transitions, from supercondu...",
+  "params": "timestep=0.2, alpha=0.0625, beta=1.0, delta=1.0, gamma=0.0625, D_a=0.2, D_b=0.2",
+  "formula": "delta_a = D_a * laplacian_a + alpha*a - gamma*b + (-beta*a + delta*b)*(a*a+b*b);           delta_b = D_b * laplacian_b +",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Ginzburg-Landau\\complex_Ginzburg-Landau_magnitude.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Ginzburg-Landau",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "\"The complex Ginzburg-Landau equation describes a vast variety of phenomena from nonlinear waves to second-order phase transitions, from supercondu...",
+  "params": "timestep=0.2, alpha=0.0625, beta=1.0, delta=1.0, gamma=0.0625, D_a=0.1, D_b=0.1",
+  "formula": "delta_a = D_a * laplacian_a + alpha*a - gamma*b + (-beta*a + delta*b)*(a*a+b*b);           delta_b = D_b * laplacian_b +",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Gray-Scott\\Lesmes_noisy.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "Lesmes F, et al. (2003) Noise-controlled self-replicating patterns (PDF) . The noise parameter controls the amount of noise added to the system. Wi...",
+  "params": "timestep=0.2, D_a=0.4, D_b=0.2, k=0.0655, F=0.05, noise=0.3",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a) + c*noise;         delta_b = D_b * laplacian_b + a*b*b - (F+k)*b;      ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Gray-Scott\\Pearson1993.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "John E. Pearson (1993) \" Complex Patterns in a Simple System \" Science 261(5118):189-192. Change the parameters k and F to explore the systems that...",
+  "params": "timestep=1.0, delta_x=0.009765625, D_a=2e-05, D_b=1e-05, k=0.06, F=0.04",
+  "formula": "delta_a = D_a * laplacian_a / (delta_x*delta_x) - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b / (delta_x*del",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Gray-Scott\\noisy_solitons_mitosis.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "Inspired by: Lesmes F, et al. (2003) Noise-controlled self-replicating patterns (PDF) . The noise parameter controls the amount of noise added to t...",
+  "params": "timestep=0.06, D_a=0.2, D_b=0.1, k=0.0648, F=0.03, noise=0.2",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a) + c*noise;         delta_b = D_b * laplacian_b + a*b*b - (F+k)*b;      ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Gray-Scott\\parameter-map.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "A map of the parameters of the Gray-Scott system. Here 'k' increases from left to right and 'F' increases from bottom to top. For more detail, see:...",
+  "params": "timestep=0.2, diff=0.07, k1=0.03, k2=0.07, F1=0.0, F2=0.1",
+  "formula": "float4 hpos = index_x / (float)X; // [0,1]         float4 vpos = index_y / (float)Y; // [0,1]         float4 k = k1 + (k",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Gray-Scott\\self-replicating_spots.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "Self-replicating spots.",
+  "params": "timestep=1.0, D_a=0.082, D_b=0.041, k=0.064, F=0.035",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b + a*b*b - (F+k)*b;",
+  "_gs_std_params": true
+ },
+ {
+  "file": "Gray-Scott\\U-Skate\\Hutton-and-helix-gliders.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   64
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 2,
+  "init": "nonzero",
+  "desc": "Two gliders in the 3D version of Robert Munafo's \"U-skate world\". One was found by Tim Hutton, and travels in a straight line. The other is the sam...",
+  "params": "timestep=1.0, D_a=0.164, D_b=0.082, k=0.06093, F=0.062",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b + a*b*b - (F+k)*b;",
+  "_gs_std_params": true
+ },
+ {
+  "file": "Gray-Scott\\U-Skate\\Munafo_glider.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "Robert Munafo's U-skater. See http://mrob.com/pub/comp/xmorphia/uskate-world.html",
+  "params": "timestep=1.0, D_a=0.164, D_b=0.082, k=0.06093, F=0.062",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b + a*b*b - (F+k)*b;",
+  "_gs_std_params": true
+ },
+ {
+  "file": "Gray-Scott\\U-Skate\\o-ring_2D.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   64,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Gray-Scott",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "An O-ring with one or a few dots moves slowly forwards. Without dots it is a stable static structure. http://mrob.com/pub/comp/xmorphia/uskate-worl...",
+  "params": "timestep=1.0, D_a=0.164, D_b=0.082, k=0.06093, F=0.062",
+  "formula": "delta_a = D_a * laplacian_a - a*b*b + F*(1.0f-a);         delta_b = D_b * laplacian_b + a*b*b - (F+k)*b;",
+  "_gs_std_params": true
+ },
+ {
+  "file": "Kytta2007\\Fig5.7a.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "Klaus Kyttä (2007) \"Computational Studies of Pattern Formation in Multiple Layer Turing Systems\" PDF Figure 5.7a. Two cubic-coupled Brusselator sys...",
+  "params": "timestep=0.001, q=0.1, p1=4.5, p2=11.0, Da=1.85, Db=16.66, Dc=25.741, Dd=196.0",
+  "formula": "delta_a = Da * laplacian_a + q*a*c*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + q*b*d*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Kytta2007\\Fig5.7c.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "Klaus Kyttä (2007) \"Computational Studies of Pattern Formation in Multiple Layer Turing Systems\" PDF Figure 5.7c. Two cubic-coupled Brusselator sys...",
+  "params": "timestep=0.001, q=0.01, p1=4.5, p2=11.0, Da=7.5, Db=32.5, Dc=27.5, Dd=121.5",
+  "formula": "delta_a = Da * laplacian_a + q*a*c*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + q*b*d*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Kytta2007\\Fig5.8c.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "Klaus Kyttä (2007) \"Computational Studies of Pattern Formation in Multiple Layer Turing Systems\" PDF Figure 5.8c. Two cubic-coupled Brusselator sys...",
+  "params": "timestep=0.001, q=0.01, p1=3.0, p2=9.0, Da=1.85, Db=5.66, Dc=50.6, Dd=186.0",
+  "formula": "delta_a = Da * laplacian_a + q*a*c*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + q*b*d*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Kytta2007\\Fig5.8d.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "Klaus Kyttä (2007) \"Computational Studies of Pattern Formation in Multiple Layer Turing Systems\" PDF Figure 5.8d. Two cubic-coupled Brusselator sys...",
+  "params": "timestep=0.001, q=0.05, p1=3.0, p2=9.0, Da=1.85, Db=5.66, Dc=50.6, Dd=186.0",
+  "formula": "delta_a = Da * laplacian_a + q*a*c*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + q*b*d*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Kytta2007\\Fig5.8e.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "Klaus Kyttä (2007) \"Computational Studies of Pattern Formation in Multiple Layer Turing Systems\" PDF Figure 5.8e. Two cubic-coupled Brusselator sys...",
+  "params": "timestep=0.001, q=0.09, p1=3.0, p2=9.0, Da=1.85, Db=5.66, Dc=50.6, Dd=186.0",
+  "formula": "delta_a = Da * laplacian_a + q*a*c*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + q*b*d*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Kytta2007\\Fig5.8f.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "Klaus Kyttä (2007) \"Computational Studies of Pattern Formation in Multiple Layer Turing Systems\" PDF Figure 5.8f. Eventually the pattern resolves i...",
+  "params": "timestep=0.001, q=0.15, p1=3.0, p2=9.0, Da=1.85, Db=5.66, Dc=50.6, Dd=186.0",
+  "formula": "delta_a = Da * laplacian_a + q*a*c*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + q*b*d*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Kytta2007\\Fig5.8g.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "Klaus Kyttä (2007) \"Computational Studies of Pattern Formation in Multiple Layer Turing Systems\" PDF Figure 5.8g. Two cubic-coupled Brusselator sys...",
+  "params": "timestep=0.001, q=0.19, p1=3.0, p2=9.0, Da=1.85, Db=5.66, Dc=50.6, Dd=186.0",
+  "formula": "delta_a = Da * laplacian_a + q*a*c*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + q*b*d*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "McCabe\\McCabe.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "McCabe",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Jonathan McCabe (2010) \" Cyclic Symmetric Multi-Scale Turing Patterns \" The model from the section 'Multi-Scale Turing Patterns'. The code 'adds va...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "McCabe\\McCabe_additive2a.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "McCabe",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Jonathan McCabe (2010) \" Cyclic Symmetric Multi-Scale Turing Patterns \" The model from the section 'Compound Turing Patterns', with variation on tw...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "McCabe\\McCabe_additive2b.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "McCabe",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Jonathan McCabe (2010) \" Cyclic Symmetric Multi-Scale Turing Patterns \" The model from the section 'Compound Turing Patterns', with variation on tw...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "McCabe\\McCabe_simple.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "McCabe",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "Jonathan McCabe (2010) \" Cyclic Symmetric Multi-Scale Turing Patterns \" The model from the section 'Simple Turing Patterns'. The code 'adds variati...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Meinhardt1982\\stripes.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Meinhardt",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "Hans Meinhardt's five-chemical model for producing stripes. Meinhardt, Hans (1982) \"Models of Biological Pattern Formation\" book available to downl...",
+  "params": "timestep=0.2, k_ab=0.04, k_c=0.06, k_de=0.04, diff1=0.005, diff2=0.4",
+  "formula": "delta_a = diff1 * laplacian_a + 0.01f * a * a * e / c - a * k_ab;         delta_b = diff1 * laplacian_b + 0.01f * b * b ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Meinhardt1982\\zebra.vtu",
+  "type": "vtu",
+  "dims": null,
+  "rule_type": "formula",
+  "rule_name": "Meinhardt",
+  "n_chem": 5,
+  "init": "unknown",
+  "desc": "Hans Meinhardt's five-chemical model for producing stripes. The pattern is initiated at the hoofs, mouth and eyes. Meinhardt, Hans (1982) \"Models o...",
+  "params": "timestep=1.0, k_ab=0.04, k_c=0.06, k_de=0.04, diff1=0.009, diff2=0.2",
+  "formula": "delta_a = diff1 * laplacian_a + 0.01f * a * a * e / c - a * k_ab;         delta_b = diff1 * laplacian_b + 0.01f * b * b ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Purwins1999\\glider.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schenk",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "C. P. Schenk, A. W. Liehr, M. Bode, and H.-G. Purwins (1999) \"Quasi-Particles in a Three-Dimensional Three-Component Reaction-Diffusion System\" Hig...",
+  "params": "D_a=0.00015, D_b=0.00015, D_c=0.0096, k3=8.5, lambda=2.0, k1=-6.92, theta=1.0, tau=48.0...",
+  "formula": "delta_a = D_a * laplacian_a / (dx*dx) - b - k3*c + lambda*a - a*a*a + k1;         delta_b = ( D_b * laplacian_b / (dx*dx",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Purwins1999\\glider_3D.vti",
+  "type": "vti",
+  "dims": [
+   32,
+   32,
+   32
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schenk",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "C. P. Schenk, A. W. Liehr, M. Bode, and H.-G. Purwins (1999) \"Quasi-Particles in a Three-Dimensional Three-Component Reaction-Diffusion System\" Hig...",
+  "params": "D_a=0.00015, D_b=0.00015, D_c=0.0096, k3=8.5, lambda=2.0, k1=-6.92, theta=1.0, tau=48.0...",
+  "formula": "delta_a = D_a * laplacian_a / (dx*dx) - b - k3*c + lambda*a - a*a*a + k1;         delta_b = ( D_b * laplacian_b / (dx*dx",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Purwins1999\\multiGlider.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schenk",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "C. P. Schenk, A. W. Liehr, M. Bode, and H.-G. Purwins (1999) \"Quasi-Particles in a Three-Dimensional Three-Component Reaction-Diffusion System\" Hig...",
+  "params": "D_a=9e-05, D_b=0.0007, D_c=0.015, k3=11.0, lambda=2.4, k1=-8.29, theta=4.0, tau=33.0, d...",
+  "formula": "delta_a = D_a * laplacian_a / (dx*dx) - b - k3*c + lambda*a - a*a*a + k1;         delta_b = ( D_b * laplacian_b / (dx*dx",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Schrodinger1926\\packet.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   1,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schrodinger equation",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "The Schrödinger equation describes the change in the wave function for some quantum state. For a travelling particle, the magnitude of the wave pac...",
+  "params": "timestep=0.001",
+  "formula": "delta_a = -laplacian_b;         delta_b =  laplacian_a;         c = hypot( a, b );",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Schrodinger1926\\packet_pass.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   1,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schrodinger equation",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "The Schrödinger equation describes the change in the wave function for some quantum state. For a travelling particle, the magnitude of the wave pac...",
+  "params": "timestep=0.001, potential=0.1",
+  "formula": "delta_a = -laplacian_b - c*b;         delta_b =  laplacian_a + c*a;         d = hypot( a, b );",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Schrodinger1926\\packet_reflect.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   1,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schrodinger equation",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "The Schrödinger equation describes the change in the wave function for some quantum state. For a travelling particle, the magnitude of the wave pac...",
+  "params": "timestep=0.001, potential=4.0",
+  "formula": "delta_a = -laplacian_b - c*b;         delta_b =  laplacian_a + c*a;         d = hypot( a, b );",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Schrodinger1926\\packet_reflect2D.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schrodinger equation",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "The Schrödinger equation describes the change in the wave function for some quantum state. For a travelling particle, the magnitude of the wave pac...",
+  "params": "timestep=0.001, potential=4.0",
+  "formula": "delta_a = -laplacian_b - c*b;         delta_b =  laplacian_a + c*a;         d = hypot( a, b ) + c;",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Schrodinger1926\\quantum_tunnelling.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   1,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Schrodinger equation",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "The Schrödinger equation describes the change in the wave function for some quantum state. For a travelling particle, the magnitude of the wave pac...",
+  "params": "timestep=0.001, potential=3.0",
+  "formula": "delta_a = -laplacian_b - c*b;         delta_b =  laplacian_a + c*a;         d = hypot( a, b );",
+  "_gs_std_params": false
+ },
+ {
+  "file": "SmoothLife\\glider_3D.vti",
+  "type": "vti",
+  "dims": [
+   32,
+   32,
+   32
+  ],
+  "rule_type": "kernel",
+  "rule_name": "SmoothLifeL",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "SmoothLife, by Stephan Rafler. PDF , software . This version uses smooth time stepping - the timestep can be made smaller without changing the beha...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "SmoothLife\\smoothglider.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "SmoothLife",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "The smoothglider, a parameter set of SmoothLife, by Stephan Rafler. PDF , software . SmoothLife was designed as a continuous version of Conway's Ga...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "SmoothLife\\smoothlifeL.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "kernel",
+  "rule_name": "SmoothLifeL",
+  "n_chem": 0,
+  "init": "unknown",
+  "desc": "SmoothLifeL, a parameter set of SmoothLife, by Stephan Rafler. PDF , software . This version uses smooth time stepping - the timestep can be made s...",
+  "params": "",
+  "formula": "",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Turing1952\\spots.vti",
+  "type": "vti",
+  "dims": [
+   64,
+   64,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Turing",
+  "n_chem": 2,
+  "init": "zero",
+  "desc": "The system that produces Table 2 from Turing's 1952 paper.",
+  "params": "timestep=0.1, D_a=0.25, D_b=0.0625, k=0.0625",
+  "formula": "delta_a = k * (16.0f - a * b) + D_a * laplacian_a;           delta_b = max( -b, k * (a * b - b - 12.0f) + D_b * laplacia",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Turing1952\\spots_noisy.vti",
+  "type": "vti",
+  "dims": [
+   64,
+   64,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Turing",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "The system that produces Table 2 from Turing's 1952 paper, with added noise. The noise helps the dots pattern become established, and helps the dot...",
+  "params": "timestep=0.1, D_a=0.5, D_b=0.125, k=0.0625",
+  "formula": "delta_a = k * (16.0f - a * b) + D_a * laplacian_a;           delta_b = max( -b, k * (a * b - b - 12.0f) + c + c + D_b * ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_1.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=9.0, alpha=1.0, Da=5.0, Db=14.0, Dc=54.9, Dd=159.8",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_2b.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=9.0, alpha=0.1, Da=16.7, Db=36.4, Dc=49.5, Dd=117.6",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_2c.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=9.0, alpha=0.1, Da=12.6, Db=27.5, Dc=49.4, Dd=117.6",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_2d.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=9.0, alpha=0.1, Da=5.6, Db=12.3, Dc=49.3, Dd=117.5",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_3a.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=9.0, alpha=0.1, Da=12.6, Db=27.5, Dc=47.5, Dd=141.5",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_3b.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=9.0, alpha=1.0, Da=1.85, Db=5.66, Dc=50.6, Dd=186.0",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_3c.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=6.0, alpha=1.0, Da=1.31, Db=9.87, Dc=34.0, Dd=344.9",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_3d.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=10.0, alpha=1.0, Da=2.03, Db=4.38, Dc=56.2, Dd=135.3",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2002\\Yang_4.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   256,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang",
+  "n_chem": 4,
+  "init": "zero",
+  "desc": "\"Spatial Resonances and Superposition Patterns in a Reaction-Diffusion Model with Interacting Turing Modes\" (2002) Lingfa Yang, Milos Dolnik, Anato...",
+  "params": "timestep=0.001, p1=3.0, p2=9.9, alpha=1.0, Da=8.33, Db=8.33, Dc=46.0, Dd=120.0",
+  "formula": "delta_a = Da * laplacian_a + alpha*(c-a) + p1 - (1.0f+p2)*a + a*a*b;         delta_b = Db * laplacian_b + alpha*(d-b) + ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2003\\Fig2.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang2003",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "L. Yang and I.R. Epstein. (2003) \"Oscillatory Turing Patterns in Reaction-Diffusion Systems with Two Coupled Layers\" http://hopf.chem.brandeis.edu/...",
+  "params": "",
+  "formula": "delta_a = Da * laplacian_a + ( a - a*a - param_f*b*(a-q)/(a+q) ) / epsilon - (a-c)/(epsilon/0.36f);         delta_b = Db",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2003\\Fig3a.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang2003",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "L. Yang and I.R. Epstein. (2003) \"Oscillatory Turing Patterns in Reaction-Diffusion Systems with Two Coupled Layers\" http://hopf.chem.brandeis.edu/...",
+  "params": "",
+  "formula": "delta_a = Da * laplacian_a + ( a - a*a - param_f*b*(a-q)/(a+q) ) / epsilon - (a-c)/(2.0f*epsilon);         delta_b = Db ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2003\\Fig3b.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang2003",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "L. Yang and I.R. Epstein. (2003) \"Oscillatory Turing Patterns in Reaction-Diffusion Systems with Two Coupled Layers\" http://hopf.chem.brandeis.edu/...",
+  "params": "",
+  "formula": "delta_a = Da * laplacian_a + ( a - a*a - param_f*b*(a-q)/(a+q) ) / epsilon - (a-c)/(2.0f*epsilon);         delta_b = Db ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2003\\Fig3c.vti",
+  "type": "vti",
+  "dims": [
+   128,
+   128,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang2003",
+  "n_chem": 5,
+  "init": "zero",
+  "desc": "L. Yang and I.R. Epstein. (2003) \"Oscillatory Turing Patterns in Reaction-Diffusion Systems with Two Coupled Layers\" http://hopf.chem.brandeis.edu/...",
+  "params": "",
+  "formula": "delta_a = Da * laplacian_a + ( a - a*a - param_f*b*(a-q)/(a+q) ) / epsilon - (a-c)/(2.0f*epsilon);         delta_b = Db ",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2006\\jumping.vti",
+  "type": "vti",
+  "dims": [
+   256,
+   1,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Yang2006",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "Lingfa Yang, Anatol M. Zhabotinsky and Irving R. Epstein (2006) \"Jumping solitary waves in an autonomous reaction–diffusion system with subcritical...",
+  "params": "D_a=1.0, D_b=1.0, D_c=60.0, k1=-8.5, k3=10.0, k4=2.0, tau=50.0, dx=0.5, timestep=0.001",
+  "formula": "delta_a = D_a * laplacian_a / (dx*dx) + k1 + 2.0f*a - a*a*a - k3*b - k4*c;         delta_b = D_b * laplacian_b / (dx*dx)",
+  "_gs_std_params": false
+ },
+ {
+  "file": "Yang2006\\jumping_cGL.vti",
+  "type": "vti",
+  "dims": [
+   512,
+   1,
+   1
+  ],
+  "rule_type": "formula",
+  "rule_name": "Ginzburg-Landau",
+  "n_chem": 3,
+  "init": "zero",
+  "desc": "Lingfa Yang, Anatol M. Zhabotinsky and Irving R. Epstein (2006) \"Jumping solitary waves in an autonomous reaction–diffusion system with subcritical...",
+  "params": "timestep=0.01, muRe=-0.1, muIm=0.1, alphaRe=3.0, alphaIm=1.0, betaRe=1.0, betaIm=1.0, n...",
+  "formula": "c = a*a + b*b; // squared magnitude           delta_a = (muRe*a - muIm*b) + c*(alphaRe*a - alphaIm*b) + (betaRe*laplacia",
+  "_gs_std_params": false
+ }
+]

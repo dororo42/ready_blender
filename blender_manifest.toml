@@ -1,0 +1,21 @@
+schema_version = "1.0.0"
+id = "ready_blender"
+version = "0.1.1"
+name = "Ready: Reaction-Diffusion"
+tagline = "Reaction-diffusion simulation on meshes and grids (Gray-Scott)"
+maintainer = "TBD"
+type = "add-on"
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2026 Ready Blender Port Team (clean-room reimplementation; sources: Pearson 1993, Gray & Scott 1983-84)"]
+platforms = ["windows-x64", "macos-arm64", "linux-x64"]
+
+[build]
+paths_exclude_pattern = [
+    "__pycache__/",
+    ".*",
+    "*.pyc",
+    "tests/",
+    "benchmark_m0.py",
+    "save_pearson.py",
+]

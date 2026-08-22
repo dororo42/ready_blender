@@ -1,0 +1,868 @@
+<!doctype html>
+<!-- Ported from Karl Sims RD Tool (karlsims.com/rdtool.html). Original copyright (c) 2022, Karl Sims. All rights reserved.
+     Direct port for local offline use: original JS/WASM kernel + original images are reused as-is.
+     Modifications: (1) inline the WASM binary for file:// protocol; (2) added a Blender preset export overlay. -->
+<html lang="en-us">
+<head>
+  <title>RD Tool — Blender 参数导出版</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Reaction-Diffusion Explorer Tool" />
+  <meta property="og:url" content="http://karlsims.com/rdtool.html" />
+  <meta property="og:image" content="http://karlsims.com/rdtool-images/rd1.jpg" />
+  <meta property="og:description" content="Interactive web application for creating reaction-diffusion textures and patterns" />
+  <meta charset="utf-8" />
+  <meta name="keywords" content="reaction-diffusion, reaction, diffusion, gray-scott,
+   interactive, simulation, simulator, webgl application, explorer, rd tool, rdtool" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="icon" type="image/png" href="rdtool-images/rd-icon-sm.png" />
+  <link rel="canonical" href="https://www.karlsims.com/rdtool.html" />
+
+  <style>
+    body {
+      background-color: rgb(39%,39%,39%);
+      font-family: sans-serif;
+      font-size: max(16px, 16vw/12);    /* clamp at min-width */
+      min-width: 1200px;    /* if changed, update all vw/12 */
+    }
+    #main_container {
+      display: flex;
+      flex-direction: row;
+      margin-left: 1.5%;
+      margin-right: 2.2%;
+      margin-top: max(20px, 20vw/12 * .75);
+    }
+    #canvas_ui_column {
+      position: relative;  /* for canvas_aspect_icon */
+      flex-direction: column;
+      width: 65%;
+      /* make text unselectable */
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      cursor: default;
+    }
+    #map_ui_column {
+      position: relative;
+      flex-direction: column;
+      width: 32%;
+      margin-left: 3%;
+    }
+    canvas {
+     width: 100%;
+     aspect-ratio: 16/9;
+     box-shadow: 0 0 0 max(1px, 1vw/12) rgb(20%,20%,20%);
+     background-color: rgb(95%,95%,95%);
+     touch-action: none;
+    }
+    #buttons_ui_container {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      height: max(28px, 28vw/12);  /* match text_button for correct clickable area */
+    }
+    #colors_scales_ui_container {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+    }
+    #colors_ui_column {
+      position: relative;
+      width: 47.5%;
+      margin-right: 4.5%;
+    }
+    #scales_ui_column {
+      flex-direction: column;
+      width: 48%;
+    }
+    #pattern_map {
+      position: relative;  /* for ring position */
+      background-image: url("rdtool-images/rd-pattern-map.png");
+      opacity: .85;
+      background-size: 100% 100%;
+      width: 100%;
+      aspect-ratio: 1;  /* make square */
+      box-shadow: 0 0 0 max(1px, 1vw/12) rgb(20%,20%,20%);
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+    #pattern_ring1 {
+      position: absolute;
+      border: max(4px, 4vw/12) solid rgb(0%,25%,100%);
+      border-radius: 50%;
+      width: 6.5%;  /* match js */
+      height: 6.5%;
+      top: calc(50% - 8.5%/2);   /* js resets */
+      left: calc(50% - 8.5%/2);
+    }
+    #pattern_ring2 {
+      visibility: hidden;
+      position: absolute;
+      border: max(4px, 4vw/12) solid rgb(100%,86%,0%);
+      border-radius: 50%;
+      width: 6.5%;  /* match js */
+      height: 6.5%;
+    }
+    #canvas_aspect_icon {
+      visibility: hidden;  /* start hidden to avoid jump */
+      position: absolute;
+      width: 1.5%;
+      aspect-ratio: 1;
+      cursor: ns-resize;
+      border-style: solid;
+      border-width: 0 0 max(2px, 2vw/12) max(2px, 2vw/12);
+      border-color: rgba(0,0,0,30%);
+      touch-action: none;
+    }
+    .text_button {
+      height: max(28px, 28vw/12);
+      width: 11%;
+      border: max(1px, 1vw/12) solid rgb(6%,6%,6%);
+      border-radius: 3.4% / 10%;
+      background-image: linear-gradient(rgb(80%,80%,80%), rgb(53%,53%,53%));
+      background-size: 100% 102%;  /* 102% avoids firefox bg bug */
+      font-family: sans-serif;
+      font-size: 100%;
+      text-align: center;  /* for iphone? */
+      color: rgb(0,0,0);
+    }
+    /* change color during pointer down */
+    .text_button:active {
+      background-image: linear-gradient(rgb(67%,67%,67%), rgb(47%,47%,47%));
+    }
+
+    #help_button {
+      height: max(27px, 27vw/12);
+      width: max(27px, 27vw/12);
+      border: max(1px, 1vw/12) solid rgb(6%,6%,6%);
+      border-radius: 50%;  /* round */
+      background-image: linear-gradient(rgb(68%,68%,68%), rgb(50%,50%,50%));
+      background-size: 100% 102%;  /* 102% avoids firefox bg bug */
+      font-size: 110%;
+      text-align: center;  /* for iphone? */
+      color: rgb(0,0,0);
+      position: absolute;
+      left: 12%;
+    }
+    #help_button:active {
+      background-image: linear-gradient(rgb(50%,50%,50%), rgb(35%,35%,35%));
+    }
+    #pause {
+      position: absolute;
+      width: 10%;  /* narrower */
+      left: 21%;
+    }
+    .pause_paused {
+      background-image: linear-gradient(rgb(67%,67%,67%), rgb(47%,47%,47%));
+      border: max(2px, 2vw/12) solid rgb(100%, 100%, 100%);
+    }
+    #clear {
+      position: absolute;
+      width: 9%;  /* narrower */
+      left: 35%;
+    }
+    #regrow {
+      position: absolute;
+      left: 48%;
+    }
+    #reset {
+      position: absolute;
+      width: 9%;  /* narrower */
+      left: 63%;
+    }
+    #example {
+      position: absolute;
+      left: 76%;
+    }
+    #example_n {
+      position: absolute;
+      font-size: 85%;
+      visibility: hidden;
+      left: 87.8%;
+      top: .5em;
+    }
+
+    /* button */
+    #fullscreen {
+      height: max(28px, 28vw/12);
+      width: max(35px, 35vw/12);
+      border: max(1px, 1vw/12) solid rgb(6%,6%,6%);
+      border-radius: 8% / 10%;
+      background-image: url(rdtool-images/fullscreen-icon.png), linear-gradient(rgb(70%,70%,70%), rgb(50%,50%,50%));
+      background-size: 100% 102%;  /* 102% avoids firefox bg bug */
+      font-size: 100%;  /* to align */
+      position: absolute;
+      right: .2%;
+    }
+
+    /* custom checkbox, bg color and checkmark set by js */
+    .checkbox {
+      margin-left: 1.5em;
+      vertical-align: top;
+      position: relative;
+      top: max(3px, 3vw/12);  /* shift down */
+      width: max(22px, 22vw/12);
+      height: max(22px, 22vw/12);
+      border: max(1px, 1vw/12) solid rgb(6%,6%,6%);
+      border-radius: 10%;
+      background-image: linear-gradient(rgb(80%,80%,80%), rgb(53%,53%,53%));  /* unchecked */
+      background-size: 100% 102%;
+      font-family: sans-serif;
+      font-size: 100%;
+      box-shadow: none;
+    }
+    .checkbox_checked {
+	background-image: url(rdtool-images/check-mark.png), linear-gradient(rgb(13%,27%,67%), rgb(13%,27%,67%));
+    }
+    .checkbox_text {
+      padding-left: 1.5em;  /* padding is clickable, margin is not */
+      position: relative;
+      vertical-align: top;
+      bottom: .1em;
+      color: rgb(0,0,0);
+    }
+
+    /* kf map buttons */
+    .kf_button {
+      width: max(34px, 34vw/12);
+      aspect-ratio: 1.125;
+      border: max(1px, 1vw/12) solid rgb(20%,20%,20%);  /* unselected */
+      border-radius: 9% / 10%;
+      margin-left: .125em;
+      background-size: 101% 101%;  /* 101 to avoid firefox bg bug */
+      opacity: .85;
+    }
+    .kf_button_selected {
+      border-color: rgb(87%,87%,87%);
+      opacity: 1.0;
+    }
+
+    /* color map buttons */
+    .cm_button {
+      width: max(34px, 34vw/12);
+      aspect-ratio: 1.125;
+      border: max(1px, 1vw/12) solid rgb(25%,25%,25%);  /* unselected */
+      border-radius: 9% / 10%;
+      opacity: .8;
+      margin-top: .2em;
+      margin-bottom: .2em;
+      background-size: 100% 100%;
+    }
+    .cm_button_selected {
+       box-shadow: 0 0 0 max(1px, 1vw/12) rgb(93%,93%,93%);
+    }
+
+    /* slider container sets thumb height and spacing */
+    .slider {  
+      position: relative;
+      cursor: pointer;
+      width: 100%;
+      aspect-ratio: 17;
+      margin-bottom: max(6px, 6vw/12);
+      touch-action: none;
+    }
+    .slider_text {
+      position: absolute;
+      z-index: -1;   /* cursor and clicks to slider */
+      bottom: 57%;
+      left: 60%;
+      font-size: 85%;
+      -webkit-touch-callout: none;  /* make unselectable */
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    .slider_track {
+      position: absolute;
+      z-index: -1;   /* cursor and clicks to slider */
+      width: 100%;
+      aspect-ratio: 68;
+      top: 38%;
+      border-radius: .44% / 30%;
+      border: max(1px, 1vw/12) solid rgb(19%,19%,19%);
+      background-image: linear-gradient(rgb(56%,56%,56%), rgb(75%,75%,75%));
+      background-size: 100% 102%;  /* 102% to avoid firefox bg bug */
+    }
+    .slider_zero_tick {
+      position: absolute;
+      z-index: -1;   /* cursor and clicks to slider */
+      height: 100%;
+      width: .5%;
+      left: 49.75%;
+      background-color: rgb(30%,30%,30%);
+      opacity: .3;
+    }
+    .slider_thumb {
+      position: absolute;
+      z-index: -1;   /* cursor and clicks to slider */
+      height: 100%;
+      width: 3%;
+      left: 48.5%;
+      background-image: linear-gradient(rgb(75%,75%,75%), rgb(56%,56%,56%));
+      border: max(1px, 1vw/12) solid rgb(20%,20%,20%);
+      border-radius: 20%;
+      background-size: 100% 102%;  /* 102% to avoid firefox bg bug */
+    }
+
+    .unselectable {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      cursor: default;
+    }
+
+    .draw_seeds_icon {
+      position: absolute;
+      left: 44%;
+      top: 32%;
+      width: 6%;
+      pointer-events: none;
+      font-size: 78%;
+      color: rgb(50%,50%,50%);
+      display: none;
+      opacity: .0;
+      transition: all .25s allow-discrete;
+    }
+    .draw_seeds_icon.show {
+      display: block;
+      opacity: .5;
+    }
+    /* start transition to show at opacity 0 */
+    @starting-style {
+     .draw_seeds_icon.show {
+     opacity: 0;
+     }
+    }
+
+    /* Blender export overlay */
+    #rd_export_btn {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 80;
+      background-image: linear-gradient(#3d8b40, #2c6b2f);
+      color: #fff;
+      border: 1px solid #1d4a20;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font: 600 14px/1 sans-serif;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.45);
+    }
+    #rd_export_btn:hover { filter: brightness(1.08); }
+    #rd_export_panel {
+      position: fixed;
+      right: 18px;
+      bottom: 62px;
+      width: 420px;
+      max-height: 70vh;
+      z-index: 90;
+      background: #f4f4f4;
+      color: #000;
+      border: 1px solid #555;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      padding: 14px 16px;
+      display: none;
+      font: 13px/1.5 sans-serif;
+      overflow: auto;
+    }
+    #rd_export_panel h3 { margin: 0 0 8px; font-size: 15px; }
+    #rd_export_panel .row { margin: 3px 0; }
+    #rd_export_panel .k { display:inline-block; width: 90px; color:#555; }
+    #rd_export_panel pre {
+      background: #222; color: #9ee38f; padding: 8px; border-radius: 5px;
+      max-height: 240px; overflow: auto; font-size: 11px; margin: 8px 0;
+      user-select: text;
+    }
+    #rd_export_panel .actions { display:flex; gap:8px; margin-top: 8px; }
+    #rd_export_panel button {
+      flex:1; padding: 7px 0; border-radius: 5px; border: 1px solid #666;
+      background-image: linear-gradient(#e9e9e9,#c9c9c9); font-weight:600; cursor:pointer;
+    }
+    #rd_export_panel button.green { background-image: linear-gradient(#3d8b40,#2c6b2f); color:#fff; border-color:#1d4a20; }
+    #rd_export_close { margin-top:2px; float:right; border:none; background:none; cursor:pointer; font-size:16px; color:#333; }
+
+  </style>
+</head>
+
+
+
+<body>
+<div id="main_container">
+
+ <div id="canvas_ui_column">
+   <canvas id="canvas">Your browser does not support HTML5 canvas.</canvas>
+   <div id="canvas_aspect_icon"></div>
+
+  <!-- Emscripten load status on canvas -->
+  <div id="status" style="position:absolute; left:5%; top:5%; color:gray;">Loading...</div>
+  <div id="draw_seeds_icon" class="draw_seeds_icon"><img src="rdtool-images/draw-seeds-icon.png" width="100%"><center>&nbsp; Draw<br>&nbsp; Seeds</center></div>
+
+  <div style="height:1.2em"></div>
+  <div id="buttons_ui_container">
+    <fps>fps: 0</fps>  <!-- for fps or aspect_ratio temp text -->
+
+    <a href="rdtool-help.html" target="__blank">
+      <button id="help_button">?</button>
+    </a>
+    
+    <a title="Pause or unpause the simulation">
+      <button id="pause" class="text_button">Pause</button>
+    </a>
+
+    <a title="Clear the canvas for drawing seeds">
+      <button id="clear" class="text_button">Clear</button>
+    </a>
+
+   <a title="Clear and reseed the simulation">
+     <button id="regrow" class="text_button">Regrow</button>
+   </a>
+
+   <a title="Reset all parameters to defaults">
+     <button id="reset" class="text_button">Reset</button>
+   </a>
+
+   <a title="Show next example">
+     <button id="example" class="text_button">Example</button>
+     <example_n id="example_n">0</example_n>
+   </a>
+
+   <a title="Display full screen">
+     <button id="fullscreen">&nbsp;</button>
+   </a>
+
+  </div> <!-- end buttons_ui_container -->
+
+  <div style="height:.85em"></div>
+
+  <div id="colors_scales_ui_container">
+
+  <div id="colors_ui_column">
+
+  Color map:<br>
+  <button id="cm0" class="cm_button" style="background-image:url(rdtool-images/cm0.png);"></button>
+  <button id="cm1" class="cm_button" style="background-image:url(rdtool-images/cm1.png);"></button>
+  <button id="cm2" class="cm_button" style="background-image:url(rdtool-images/cm2.png);"></button>
+  <button id="cm3" class="cm_button" style="background-image:url(rdtool-images/cm3.png);"></button>
+  <button id="cm4" class="cm_button" style="background-image:url(rdtool-images/cm4.png);"></button>
+  <button id="cm5" class="cm_button" style="background-image:url(rdtool-images/cm5.png);"></button>
+
+  <a title="Apply 3D lighting model">
+  <button id="emboss" class="checkbox"><div class="checkbox_text">Emboss</div></button>
+  </a>
+  <br>
+
+  <button id="cm6" class="cm_button" style="background-image:url(rdtool-images/cm6.png);"></button>
+  <button id="cm7" class="cm_button" style="background-image:url(rdtool-images/cm7.png);"></button>
+  <button id="cm8" class="cm_button" style="background-image:url(rdtool-images/cm8.png);"></button>
+  <button id="cm9" class="cm_button" style="background-image:url(rdtool-images/cm9.png);"></button>
+  <button id="cm10" class="cm_button" style="background-image:url(rdtool-images/cm10.png);"></button>
+  <button id="cm11" class="cm_button" style="background-image:url(rdtool-images/cm11.png);"></button>
+
+  <a title="Invert all colors">
+  <button id="invert" class="checkbox"><div class="checkbox_text">Invert</div></button>
+  </a>
+
+  <div style="height:1em"></div>
+
+  <details id="adjust_colors"><summary>Adjust colors</summary>
+  <div style="height:.1em"></div>
+  <div class="slider" id="hue">
+    <div class="slider_text">Hue</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="saturation">
+    <div class="slider_text">Saturation</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="brightness">
+    <div class="slider_text">Brightness</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="contrast">
+    <div class="slider_text">Contrast</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="color_freq">
+    <div class="slider_text">Frequency</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="color_phase">
+    <div class="slider_text">Phase</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+  </details>
+
+  <debug></debug> <!-- can show debug string here -->
+  </div>  <!-- end colors_ui_column -->
+
+  <div id="scales_ui_column">
+   <div style="height:.9em"></div>
+
+  <div class="slider" id="scale_all">
+    <div class="slider_text">Scale</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="scale_radial">
+    <div class="slider_text">Scale Radial</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="scale_random">
+    <div class="slider_text">Scale Random</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="scale_ring">
+    <div class="slider_text">Scale Ring</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <br>
+  <div class="slider" id="speed">
+    <div class="slider_text">Speed</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  </div> <!-- end scales_ui_column -->
+
+  <div style="height:1em"></div>
+
+  </div> <!-- end colors_scales_ui_container -->
+ </div> <!-- end canvas_ui_column -->
+
+ <div id="map_ui_column">
+  <div id="pattern_map">
+    <div id="pattern_ring1"></div>
+    <div id="pattern_ring2"></div>
+  </div>
+
+  <div style="margin-top:.5em; margin-bottom:1.5em">Select Pattern<kf> &nbsp; k=0.06264 &nbsp; f=0.06100</kf></div>
+
+  <div class="unselectable">
+  <a title="Interpolate between 2 patterns from blue and yellow cursors">  <!-- use titles for tool tips -->
+  <span style="vertical-align:top; position:relative; top:.3em;">Vary Pattern:&nbsp;</span>
+  <button id="kf_radial" class="kf_button" style="background-image:url(rdtool-images/kf-radial.png);"></button>
+  <button id="kf_random" class="kf_button" style="background-image:url(rdtool-images/kf-random.png);"></button>
+  <button id="kf_ring" class="kf_button" style="background-image:url(rdtool-images/kf-ring.png);"></button>
+  <button id="kf_horiz" class="kf_button" style="background-image:url(rdtool-images/kf-horiz.png);"></button>
+  <button id="kf_vert" class="kf_button" style="background-image:url(rdtool-images/kf-vert.png);"></button>
+  <!-- <button id="kf_none" class="kf_button" style="background-image:url(rdtool-images/kf-none.png);"></button> -->
+  </a>
+
+  <div style="height:2em"></div>
+
+
+  <div class="slider" id="flow_radial">
+    <div class="slider_text">Flow Radial</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="flow_rotate">
+    <div class="slider_text">Flow Rotate</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="flow_swirl">
+    <div class="slider_text">Flow Swirl</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="flow_bubble">
+    <div class="slider_text">Flow Bubble</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="flow_ring">
+    <div class="slider_text">Flow Ring</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="flow_vortex">
+    <div class="slider_text">Flow Vortex</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="flow_vert">
+    <div class="slider_text">Flow Vertical</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+  <div style="height:.2em"></div>
+
+  <details id="orientation"><summary>Orientation</summary>
+  <div style="height:.08em"></div>
+  <div class="slider" id="orientation_radial">
+    <div class="slider_text">Orientation Radial</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="orientation_circles">
+    <div class="slider_text">Orientation Circles</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="orientation_swirl">
+    <div class="slider_text">Orientation Swirl</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="orientation_bubble">
+    <div class="slider_text">Orientation Bubble</div>
+    <div class="slider_track"><div class="slider_zero_tick"></div></div>
+    <div class="slider_thumb"></div>
+  </div>
+
+  <div class="slider" id="orientation_vert">
+    <div class="slider_text">Orientation Linear</div> <!- neg for horizontal -->
+    <div class="slider_track"><div class="slider_zero_tick"></div></div> <!- neg for horizontal -->
+    <div class="slider_thumb"></div> <!- neg thumb horizontal -->
+  </div>
+  </details>
+
+ </div> <!-- end unselectable -->
+ </div> <!-- end map_ui_column -->
+
+</div> <!-- end main_container -->
+
+<!-- Blender export UI (injected) -->
+<button id="rd_export_btn" title="把当前选中的图案/参数导出为 Blender 可导入的 JSON 预设">导出 Blender 预设</button>
+<div id="rd_export_panel">
+  <button id="rd_export_close" title="关闭">✕</button>
+  <h3>Blender 预设导出</h3>
+  <div class="row"><span class="k">F(进料率)</span><b id="rd_f"></b></div>
+  <div class="row"><span class="k">k(死亡率)</span><b id="rd_k"></b></div>
+  <div class="row"><span class="k">Du / Dv / dt</span><span id="rd_dudvdt"></span></div>
+  <div class="row"><span class="k">图案缩放</span><span id="rd_scale"></span></div>
+  <div class="row"><span class="k">Flow</span><span id="rd_flow"></span></div>
+  <div class="row"><span class="k">Orientation</span><span id="rd_ori"></span></div>
+  <pre id="rd_json"></pre>
+  <div class="actions">
+    <button class="green" id="rd_download">下载 .json</button>
+    <button id="rd_copy">复制到剪贴板</button>
+    <button id="rd_refresh">刷新预览</button>
+  </div>
+</div>
+
+<!-- Emscripten generated script, copied from rdtool-ems.html and thinned out -->
+<script type='text/javascript'>
+      var statusElement = document.getElementById('status');
+
+      var Module = {
+        preRun: [],
+        postRun: [],
+        print: (function() {
+          var element = document.getElementById('output');
+          if (element) element.value = ''; /* clear browser cache */
+          return function(text) {
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            console.log(text);
+            if (element) {
+              element.value += text + "\n";
+              element.scrollTop = element.scrollHeight; /* focus on bottom */
+            }
+          };
+        })(),
+        printErr: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          console.error(text);
+        },
+        setStatus: function(text) {
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.last.text) return;
+          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          var now = Date.now();
+          if (m && now - Module.setStatus.last.time < 30) return; /* if this is a progress update, skip it if too soon */
+          Module.setStatus.last.time = now;
+          Module.setStatus.last.text = text;
+          if (m) {
+            text = m[1];
+          }
+          statusElement.innerHTML = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+         window.onerror = function(event) {
+        Module.setStatus('Error, see JavaScript console for details.');
+        Module.setStatus = function(text) {
+          if (text) Module.printErr('[post-exception status] ' + text);
+        };
+      };
+    </script>
+
+    <!-- 1) inline wasmBinary first (bypasses file:// fetch restriction), 2) then ems glue, 3) then interaction logic.
+         Order must be preserved so Module.wasmBinary is set before rdtool-ems.js reads it. -->
+    <script type="text/javascript" src="rdtool-ems.wasm.js"></script>
+    <script type="text/javascript" src="rdtool-ems.js"></script>
+    <script type="text/javascript" src="rdtool2.js"></script>
+
+    <!-- Blender preset export overlay (must run after rdtool2.js so xy_to_kf / param_targets exist) -->
+    <script type="text/javascript">
+      (function () {
+        var panel = document.getElementById('rd_export_panel');
+        var btn = document.getElementById('rd_export_btn');
+        var jsonEl = document.getElementById('rd_json');
+        var showPanel = function(show) { panel.style.display = show ? 'block' : 'none'; };
+
+        btn.addEventListener('click', function (e) { e.stopPropagation(); showPanel(true); render(); });
+        document.getElementById('rd_export_close').addEventListener('click', function () { showPanel(false); });
+        document.getElementById('rd_refresh').addEventListener('click', render);
+        document.getElementById('rd_download').addEventListener('click', function () {
+          download(render(false));
+        });
+        document.getElementById('rd_copy').addEventListener('click', function () {
+          copyText(jsonEl.textContent);
+        });
+
+        // rdtool Gray-Scott 参数名 → Blender Gray-Scott 参数名
+        // 取自 rdtool2.js 的 xy_to_kf():返回 [kill, feed]
+        function current_kf() {
+          if (typeof xy_to_kf === 'function' && typeof param_targets !== 'undefined') {
+            var xy = xy_to_kf(param_targets.k1, param_targets.f1);
+            if (Array.isArray(xy) && xy.length >= 2) {
+              return { feed: xy[1], kill: xy[0] };
+            }
+          }
+          // 兜底:中心默认(与 rdtool 页面初始显示 k=0.06265 f=0.06100 一致)
+          return { feed: 0.06100, kill: 0.06265 };
+        }
+        function num(v, d) { return typeof v === 'number' && isFinite(v) ? v : (d || 0); }
+
+        // rdtool 用户控件名 → Blender 的 kind + strength(取绝对值最大的那一路)
+        function dominant(modeMap) {
+          var best = { name: 'none', abs: 0 };
+          for (var rn in modeMap) {
+            var v = num(typeof param_targets !== 'undefined' ? param_targets[rn] : 0);
+            var a = Math.abs(v);
+            if (a > best.abs) best = { name: modeMap[rn], abs: a, val: v };
+          }
+          return best;
+        }
+        var FLOW_MAP = {
+          flow_radial:'radial', flow_rotate:'rotate', flow_swirl:'swirl',
+          flow_bubble:'bubble', flow_ring:'ring', flow_vortex:'vortex', flow_vert:'vertical'
+        };
+        var ORI_MAP = {
+          orientation_radial:'radial', orientation_circles:'circles', orientation_swirl:'swirl',
+          orientation_bubble:'bubble', orientation_vert:'linear'
+        };
+
+        function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+        function r3(v) { return Math.round(clamp(v, 0, 1) * 1000) / 1000; }
+        function r4(v) { return Math.round(v * 10000) / 10000; }
+        function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+        function buildDict() {
+          var kf = current_kf();
+          // Blender 侧范围:param_F/param_k ∈ [0,0.2]
+          var F = r4(clamp(kf.feed, 0, 0.2));
+          var k = r4(clamp(kf.kill, 0, 0.2));
+          var flow = dominant(FLOW_MAP);
+          var ori = dominant(ORI_MAP);
+          var sa = typeof param_targets !== 'undefined' ? num(param_targets.scale_all) : 0;
+          // rdtool scale_all(-1..1) → Blender pattern_scale(0.25..2.5, 默认1)
+          var pattern_scale = Math.round(clamp(1 + sa, 0.25, 2.5) * 100) / 100;
+          var now = new Date();
+          var id = 'rd_' + now.getFullYear() + pad2(now.getMonth() + 1) + pad2(now.getDate()) +
+                   '_' + pad2(now.getHours()) + pad2(now.getMinutes()) + pad2(now.getSeconds());
+          return {
+            id: id,
+            name: 'RD 网页选参 F=' + F + ' k=' + k,
+            rule: 'Gray-Scott',
+            params: { Du: 0.16, Dv: 0.08, F: F, k: k, dt: 1.0 },
+            seed_region: 'center_disc',
+            noise_ratio: 1.0,
+            source: 'RD_Tool 原版网页直转移植(Karl Sims rdtool)',
+            exported_at: now.toISOString(),
+            extensions: {
+              pattern_scale: pattern_scale,
+              style_map: null,
+              flow: flow.name === 'none' ? null : { kind: flow.name, strength: r3(flow.abs) },
+              orientation: ori.name === 'none' ? null : { kind: ori.name, strength: r3(clamp(ori.abs, 0, 0.95)) },
+              rd_kf_source: { feed: r4(kf.feed), kill: r4(kf.kill) }
+            }
+          };
+        }
+
+        function render(show) {
+          var d = buildDict();
+          document.getElementById('rd_f').textContent = String(d.params.F);
+          document.getElementById('rd_k').textContent = String(d.params.k);
+          document.getElementById('rd_dudvdt').textContent = d.params.Du + ' / ' + d.params.Dv + ' / ' + d.params.dt;
+          document.getElementById('rd_scale').textContent = String(d.extensions.pattern_scale);
+          document.getElementById('rd_flow').textContent = d.extensions.flow ? (d.extensions.flow.kind + ' ' + d.extensions.flow.strength) : '关闭';
+          document.getElementById('rd_ori').textContent = d.extensions.orientation ? (d.extensions.orientation.kind + ' ' + d.extensions.orientation.strength) : '关闭';
+          jsonEl.textContent = JSON.stringify(d, null, 2);
+          if (show === true) showPanel(true);
+          return d;
+        }
+
+        function download(d) {
+          var blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = d.id + '_rd_preset.json';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+        }
+        function copyText(txt) {
+          function fallback() {
+            var ta = document.createElement('textarea');
+            ta.value = txt; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            ta.remove();
+            alert('已复制到剪贴板');
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(function(){ alert('已复制到剪贴板'); }, fallback);
+          } else fallback();
+        }
+      })();
+    </script>
+
+  </body>
+</html>

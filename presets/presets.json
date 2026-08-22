@@ -1,0 +1,79 @@
+{
+  "presets": [
+    {
+      "id": "pearson_spots",
+      "name": "Pearson 1993 · 斑点 (Spots)",
+      "rule": "Gray-Scott",
+      "params": {
+        "Du": 0.16,
+        "Dv": 0.08,
+        "F": 0.03,
+        "k": 0.062,
+        "dt": 1.0
+      },
+      "seed_region": "center_square_0.25",
+      "noise_ratio": 1.0,
+      "source": "Pearson 1993 图例孤子斑点区参数(mrob 分类口径,用户已确认方案 a)"
+    },
+    {
+      "id": "coral_growth",
+      "name": "珊瑚生长 (Coral Growth)",
+      "rule": "Gray-Scott",
+      "params": {
+        "Du": 0.16,
+        "Dv": 0.08,
+        "F": 0.0545,
+        "k": 0.062,
+        "dt": 1.0
+      },
+      "seed_region": "center_square_0.25",
+      "noise_ratio": 1.0,
+      "source": "Pearson 1993 Fig. coral-growth parameter region; Karl Sims tutorial also calls it Fingerprint (公开论文图例参数)"
+    },
+    {
+      "id": "mitosis",
+      "name": "有丝分裂 (Mitosis)",
+      "rule": "Gray-Scott",
+      "params": {
+        "Du": 0.16,
+        "Dv": 0.08,
+        "F": 0.0367,
+        "k": 0.0649,
+        "dt": 1.0
+      },
+      "seed_region": "center_disc",
+      "noise_ratio": 0.3,
+      "source": "Karl Sims 教程经典 mitosis 参数(用户已确认方案 a:spots 已区分)"
+    },
+    {
+      "id": "worms",
+      "name": "蠕虫 (Worms)",
+      "rule": "Gray-Scott",
+      "params": {
+        "Du": 0.16,
+        "Dv": 0.08,
+        "F": 0.058,
+        "k": 0.065,
+        "dt": 1.0
+      },
+      "seed_region": "center_square_0.25",
+      "noise_ratio": 1.0,
+      "source": "Pearson 1993 worm parameter region (公开论文图例参数)"
+    },
+    {
+      "id": "chaos",
+      "name": "混沌纹理 (Chaotic)",
+      "rule": "Gray-Scott",
+      "params": {
+        "Du": 0.16,
+        "Dv": 0.08,
+        "F": 0.026,
+        "k": 0.051,
+        "dt": 1.0
+      },
+      "seed_region": "center_square_0.25",
+      "noise_ratio": 1.0,
+      "source": "Pearson 1993 chaos parameter region (公开论文图例参数)"
+    }
+  ]
+}
