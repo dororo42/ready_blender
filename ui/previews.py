@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-"""预设缩略图预览集合(bpy.utils.previews 胶水层;实施阶段 1b)。
+"""ui/previews.py 兼容层修复:Blender 4.2+ 部分版本已移除 bpy.utils.previews。
 
-- 缩略图数组由 presets.pattern_map 实时渲染(本插件求解内核,净室);
-- PNG 编码复用 pattern_map.png_encode_gray(最小 zlib+struct,无 PIL 依赖);
-- 图标缓存:preset_id → icon_value,重复调用零成本;
-- 无 bpy 或渲染失败时一律返回 0(Blender 显示普通文本项,不报错)。
+降级策略:previews 集合不可用时,register() 静默跳过、preset_icon() 恒返回 0,
+预设下拉退化为纯文本枚举(功能不受影响,仅无缩略图)。任何异常不向外抛。
 """
 import bpy
 
@@ -20,24 +18,41 @@ except ImportError:
         png_encode_gray = None
         get_preset = None
 
-_pc = None          # preview collection
+_pc = None          # preview collection(不可用时保持 None)
 _icon_cache = {}    # preset_id -> icon_value
+_previews_mod = None  # bpy.utils.previews 模块引用;缺失为 None
+
+
+def _detect_previews():
+    """探测 bpy.utils.previews 是否可用(Blender 4.2+ 部分版本已移除)。"""
+    global _previews_mod
+    try:
+        _previews_mod = getattr(bpy.utils, "previews", None)
+    except Exception:
+        _previews_mod = None
+    return _previews_mod is not None
 
 
 def register():
     global _pc
-    if _pc is None:
-        _pc = bpy.utils.previews.new()
+    if not _detect_previews():
+        _pc = None  # 无 previews:缩略图禁用(纯文本枚举)
+        return
+    try:
+        if _pc is None:
+            _pc = _previews_mod.new()
+    except Exception:
+        _pc = None
 
 
 def unregister():
     global _pc, _icon_cache
-    if _pc is not None:
+    if _pc is not None and _previews_mod is not None:
         try:
-            bpy.utils.previews.remove(_pc)
+            _previews_mod.remove(_pc)
         except Exception:
             pass
-        _pc = None
+    _pc = None
     _icon_cache.clear()
 
 
@@ -62,7 +77,7 @@ def _thumb_for_preset(preset_id):
 
 
 def preset_icon(preset_id):
-    """返回该预设的 icon_value;未生成/失败返回 0(不抛异常)。"""
+    """返回该预设的 icon_value;previews 不可用/未生成/失败返回 0(不抛异常)。"""
     global _pc
     if _pc is None:
         return 0

@@ -21,6 +21,9 @@ import time
 
 _PARAM_KEYS = ("Du", "Dv", "F", "k", "dt")
 _WRAP_KEYS = ("wrap",)
+# 写入插件目录失败时的兜底路径(用户主目录,纯 python 可测)
+_FALLBACK_USER_FILE = os.path.join(os.path.expanduser("~"),
+                                   ".ready_blender_user_presets.json")
 _SEED_REGIONS = ("center_square", "center_disc", "uniform_sparse", "global",
                  "center_square_0.25")
 _EXT_KEYS = ("pattern_scale", "style_map", "orientation", "flow")
@@ -106,25 +109,68 @@ def import_preset_dict(d):
 
 def load_user_presets(user_file=DEFAULT_USER_FILE):
     """读用户预设列表;文件不存在/损坏返回 []。"""
-    if not user_file or not os.path.exists(user_file):
-        return []
-    try:
-        with open(user_file, encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, list):
-            return [d for d in data if isinstance(d, dict) and d.get("params")]
-    except Exception:
-        return []
+    if not user_file:
+        user_file = DEFAULT_USER_FILE
+    paths = [user_file]
+    if user_file == DEFAULT_USER_FILE:
+        paths.append(_FALLBACK_USER_FILE)
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, encoding="utf-8-sig") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                return [d for d in data if isinstance(d, dict) and d.get("params")]
+        except Exception:
+            continue
     return []
 
 
-def write_user_preset(d, user_file=DEFAULT_USER_FILE):
+def write_user_preset(d, user_file=None):
     """把规范化后的预设追加进用户文件;同 id 去重覆盖。返回 True。"""
     d = import_preset_dict(dict(d))  # 再校验一次(调用方未规范化时兜底)
+    if not user_file:
+        user_file = DEFAULT_USER_FILE
+    target = user_file
     items = load_user_presets(user_file)
     items = [x for x in items if x.get("id") != d["id"]]
     items.append(d)
-    os.makedirs(os.path.dirname(user_file) or ".", exist_ok=True)
-    with open(user_file, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, indent=2)
-    return True
+    try:
+        os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+        with open(target, "w", encoding="utf-8") as f:
+            json.dump(items, f, ensure_ascii=False, indent=2)
+    except OSError:
+        # 插件目录只读(系统盘安装等):回退用户主目录
+        target = _FALLBACK_USER_FILE
+        os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+        with open(target, "w", encoding="utf-8") as f:
+            json.dump(items, f, ensure_ascii=False, indent=2)
+    return target
+
+def import_preset_text(text):
+    """从 JSON 字符串导入(剪贴板粘贴用);非法抛 ValueError。"""
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("剪贴板为空")
+    try:
+        d = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON 解析失败: {e}")
+    return import_preset_dict(d)
+
+
+def import_preset_file(path):
+    """从文件导入;兼容 UTF-8(含 BOM)与 GBK(记事本 ANSI 另存);非法抛 ValueError。"""
+    raw = None
+    with open(path, "rb") as f:
+        raw = f.read()
+    text = None
+    for enc in ("utf-8-sig", "gbk"):
+        try:
+            text = raw.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if text is None:
+        raise ValueError("文件编码无法识别(支持 UTF-8 / GBK)")
+    return import_preset_text(text)

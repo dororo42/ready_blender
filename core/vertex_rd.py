@@ -95,3 +95,121 @@ def run_vertex_rd(n_verts, edges, faces, iterations=500, du=0.16, dv=0.08,
                        boundary if preserve_boundary else None,
                        du, dv, f, k, dt)
     return U, V, boundary, degrees
+
+
+# ── 3D 网格扩展:Orientation(各向异性扩散) + Flow(平流) ────────────────
+# 全部为纯 numpy 函数(可独立测试);rule.py 图版步进中调用。
+
+
+def _safe_norm(v, eps=1e-12):
+    n = np.linalg.norm(v, axis=-1, keepdims=True)
+    return v / np.maximum(n, eps)
+
+
+def orientation_vectors_3d(verts, kind, centroid=None):
+    """网格顶点各向异性主轴方向场 (N,3) 单位向量。
+
+    linear=竖直(Y) / horizontal=水平(X) / radial=背离质心 /
+    circles=绕 Y 轴切向 / swirl=径向+切向混合 / bubble=向外(简化)。
+    """
+    verts = np.asarray(verts, dtype=np.float32)
+    n = len(verts)
+    if kind == "linear":
+        return np.tile(np.array([0.0, 1.0, 0.0], np.float32), (n, 1))
+    if kind == "horizontal":
+        return np.tile(np.array([1.0, 0.0, 0.0], np.float32), (n, 1))
+    c = verts.mean(axis=0) if centroid is None else np.asarray(centroid, np.float32)
+    r = verts - c
+    rn = _safe_norm(r)
+    if kind == "radial" or kind == "bubble":
+        return rn
+    up = np.array([0.0, 1.0, 0.0], np.float32)
+    t = np.cross(r, up)
+    tn = _safe_norm(t)
+    # 与 up 平行退化:改用 X 轴参考
+    tiny = np.linalg.norm(t, axis=-1) < 1e-9
+    if tiny.any():
+        t2 = np.cross(r, np.array([1.0, 0.0, 0.0], np.float32))
+        tn[tiny] = _safe_norm(t2[tiny])
+    if kind == "circles":
+        return tn
+    if kind == "swirl":
+        return _safe_norm(rn + 0.8 * tn)
+    return rn
+
+
+def velocity_field_3d(verts, kind, strength, centroid=None):
+    """网格顶点速度场 (N,3);7 种与 2D 同语义的 3D 版本,模长有界 ≤|strength|·1.4。"""
+    verts = np.asarray(verts, dtype=np.float32)
+    s = float(strength)
+    n = len(verts)
+    c = verts.mean(axis=0) if centroid is None else np.asarray(centroid, np.float32)
+    r = verts - c
+    rn = _safe_norm(r)
+    R = max(float(np.linalg.norm(verts.max(axis=0) - verts.min(axis=0))) * 0.5, 1e-6)
+    up = np.array([0.0, 1.0, 0.0], np.float32)
+    t = np.cross(r, up)
+    tn = _safe_norm(t)
+    tiny = np.linalg.norm(t, axis=-1) < 1e-9
+    if tiny.any():
+        t2 = np.cross(r, np.array([1.0, 0.0, 0.0], np.float32))
+        tn[tiny] = _safe_norm(t2[tiny])
+    rr = np.linalg.norm(r, axis=-1, keepdims=True)
+    zero = np.zeros((n, 3), np.float32)
+    if kind == "vertical":
+        v = zero.copy()
+        v[:, 1] = s
+        return v
+    if kind == "radial":
+        return s * rn
+    if kind == "rotate":
+        return s * tn
+    if kind == "swirl":
+        return s * _safe_norm(rn * 0.3 + tn) * (rr / R)
+    if kind == "bubble":
+        return s * rn * np.exp(-(rr / R) ** 2)
+    if kind == "ring":
+        return s * tn * np.exp(-((rr - 0.5 * R) / (0.15 * R)) ** 2)
+    if kind == "vortex":
+        return s * (tn - 0.3 * rn)
+    return zero
+
+
+def aniso_edge_weights(nbr_idx, nbr_w, verts, dirs, alpha):
+    """各向异性边权重:w' = w·(1+α(2cos²θ−1)),按行归一化(Σw'=1,谱有界)。
+
+    cosθ = 边方向·主轴方向(两端平均),α∈[0,0.95]。填充槽(自身)权重清零后
+    再次归一化,保持 graph_laplacian 的 Σw=1 语义。
+    """
+    verts = np.asarray(verts, dtype=np.float32)
+    dirs = np.asarray(dirs, dtype=np.float32)
+    n = len(verts)
+    e = verts[nbr_idx] - verts[:, None, :]          # (N,K,3)
+    e = _safe_norm(e)
+    d_mid = dirs[nbr_idx] + dirs[:, None, :]
+    d_mid = _safe_norm(d_mid)
+    cos2 = np.sum(d_mid * e, axis=2) ** 2
+    w = np.asarray(nbr_w, dtype=np.float32) * (1.0 + float(alpha) * (2.0 * cos2 - 1.0))
+    w = np.maximum(w, 0.0)
+    s = w.sum(axis=1, keepdims=True)
+    w = w / np.maximum(s, 1e-12)
+    self_mask = nbr_idx == np.arange(n)[:, None]
+    w = np.where(self_mask, 0.0, w)
+    s2 = w.sum(axis=1, keepdims=True)
+    w = w / np.maximum(s2, 1e-12)
+    return w.astype(np.float32)
+
+
+def advect_mesh(u, verts, vel, dt, nbr_idx):
+    """半拉格朗日平流(最近邻版):回溯点 pos−vel·dt,在 {自身}∪{邻居} 中取最近。
+
+    顶点粒度近似(网格平流无解析插值),速度场较弱时视觉正确;常数场恒等。
+    """
+    verts = np.asarray(verts, dtype=np.float32)
+    vel = np.asarray(vel, dtype=np.float32)
+    n = len(u)
+    back = verts - vel * float(dt)
+    cand = np.concatenate([np.arange(n)[:, None], np.asarray(nbr_idx)], axis=1)
+    d = np.linalg.norm(verts[cand] - back[:, None, :], axis=2)  # (N,K+1)
+    j = cand[np.arange(n), d.argmin(axis=1)]
+    u[:] = u[j]

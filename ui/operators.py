@@ -156,6 +156,9 @@ def init_engine_from_settings(context):
         except ImportError:
             from adapters.mesh_adapter import mesh_to_field
         mf = mesh_to_field(obj, kind="vertex")
+        # 3D 扩展:顶点坐标(与 mf 顶点域索引一致)→ Orientation/Flow 用
+        _mesh_verts = np.array([[v.co.x, v.co.y, v.co.z]
+                                for v in obj.data.vertices], dtype=np.float32)
         if chem_base is None:
             # oil-water mesh 模式:面域双场白噪声(相分离由排斥动力学自行演化;
             # 图邻域版 Agmon 算法,见 core.rule.OilWaterRule._update_mesh)
@@ -175,6 +178,8 @@ def init_engine_from_settings(context):
             np.full(mf.data.shape[0], chem_base[0], dtype=np.float32),
             np.full(mf.data.shape[0], chem_base[1], dtype=np.float32),
         ]
+        if hasattr(engine, "params"):
+            engine.params["mesh_verts"] = _mesh_verts
         # 初始条件:按 seed_region 选择扰动方式
         try:
             if settings.seed_region in ("uniform_sparse", "global"):
@@ -1722,21 +1727,20 @@ class RD_OT_import_preset_json(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def execute(self, context):
-        import json
         try:
-            from ..fileio.preset_io import import_preset_dict, write_user_preset
-            from ..presets.presets import refresh_user_presets
-        except ImportError:
-            from fileio.preset_io import import_preset_dict, write_user_preset
-            from presets.presets import refresh_user_presets
-        try:
-            with open(self.filepath, encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception as e:
-            self.report({"ERROR"}, f"JSON 读取失败: {e}")
+            try:
+                from ..fileio.preset_io import import_preset_file, write_user_preset
+            except ImportError:
+                from fileio.preset_io import import_preset_file, write_user_preset
+            try:
+                from ..presets.presets import refresh_user_presets
+            except ImportError:
+                from presets.presets import refresh_user_presets
+        except ImportError as e:
+            self.report({"ERROR"}, f"模块导入失败: {e}")
             return {"CANCELLED"}
         try:
-            d = import_preset_dict(data)
+            d = import_preset_file(self.filepath)
         except ValueError as e:
             self.report({"ERROR"}, f"预设不合法: {e}")
             return {"CANCELLED"}
@@ -1747,7 +1751,43 @@ class RD_OT_import_preset_json(bpy.types.Operator):
             self.report({"ERROR"}, f"预设保存失败: {e}")
             return {"CANCELLED"}
         self.report({"INFO"},
-                    f"已导入预设「{d['name']}」(下拉列表 [导入] 前缀项)")
+                    f"已导入预设「{d['name']}」(③ 参数下拉 [导入] 前缀项)")
+        return {"FINISHED"}
+
+
+class RD_OT_paste_preset_json(bpy.types.Operator):
+    """从剪贴板粘贴 JSON 导入(网页「复制 JSON」→ 面板「粘贴导入」,无需文件路径)。"""
+    bl_idname = "ready.paste_preset_json"
+    bl_label = "Paste Preset JSON"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        try:
+            try:
+                from ..fileio.preset_io import import_preset_text, write_user_preset
+            except ImportError:
+                from fileio.preset_io import import_preset_text, write_user_preset
+            try:
+                from ..presets.presets import refresh_user_presets
+            except ImportError:
+                from presets.presets import refresh_user_presets
+        except ImportError as e:
+            self.report({"ERROR"}, f"模块导入失败: {e}")
+            return {"CANCELLED"}
+        text = getattr(context.window_manager, "clipboard", "") or ""
+        try:
+            d = import_preset_text(text)
+        except ValueError as e:
+            self.report({"ERROR"}, f"预设不合法: {e}")
+            return {"CANCELLED"}
+        try:
+            write_user_preset(d)
+            refresh_user_presets()
+        except Exception as e:
+            self.report({"ERROR"}, f"预设保存失败: {e}")
+            return {"CANCELLED"}
+        self.report({"INFO"},
+                    f"已从剪贴板导入「{d['name']}」(③ 参数下拉 [导入] 前缀项)")
         return {"FINISHED"}
 
 

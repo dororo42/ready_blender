@@ -183,7 +183,21 @@ class RD_PT_main(bpy.types.Panel):
         # ── 步骤③ 参数 → 初始化 ────────────────────────────
         box = layout.box()
         box.label(text=_L("③ 参数", "③ Parameters"), icon="OPTIONS")
-        box.operator("ready.preset_load", text=_L("加载预设 / 参数变体", "Load Preset / Variant"))
+        _row = box.row(align=True)
+        _row.operator("ready.preset_load", text=_L("加载预设 / 参数变体", "Load Preset / Variant"))
+        _row.operator("ready.import_preset_json", text=_L("导入 JSON", "Import JSON"), icon="IMPORT")
+        _row.operator("ready.paste_preset_json", text=_L("粘贴导入", "Paste JSON"), icon="PASTEDOWN")
+        try:
+            import urllib.parse
+            import os as _os
+            _page = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+                                  "web", "reaction-diffusion.html")
+            if _os.path.exists(_page):
+                _url = "file:///" + urllib.parse.quote(_page.replace("\\", "/"))
+                _op = box.operator("wm.url_open", text=_L("打开 RD 网页工具", "Open RD Web Tool"), icon="URL")
+                _op.url = _url
+        except Exception:
+            pass
         if settings.system_enum == "gray_scott" and settings.field_kind == "grid":
             # W1:RD 网页工具链路(浏览器选参 → 导出 JSON → 导入为用户预设)
             _row = box.row(align=True)
@@ -199,17 +213,25 @@ class RD_PT_main(bpy.types.Panel):
             _row.prop(settings, "param_F")
             _row.prop(settings, "param_k")
             box.prop(settings, "param_dt")
-            if settings.field_kind == "grid":
-                box.prop(settings, "pattern_scale")
+            # 扩展参数(2D 与 3D 网格均生效;图案地图仅 2D)
+            box.prop(settings, "pattern_scale")
+            if settings.field_kind == "mesh":
+                box.label(text=_L("图案缩放同样作用于网格(Du/Dv×s²,子步保护)",
+                                  "Scale applies to mesh too (Du/Dv×s²)"), icon="INFO")
+            else:
                 box.label(text=_L("放大>1.25 时自动子步,耗时按比例增加",
                                   "Substeps auto-enabled above 1.25x"), icon="INFO")
-                # W1 扩展参数:Orientation(各向异性扩散) + Flow(空间平流)
-                _r = box.row(align=True)
-                _r.prop(settings, "orientation_kind", text="Orientation")
-                _r.prop(settings, "orientation_strength", text="强度")
-                _r = box.row(align=True)
-                _r.prop(settings, "flow_kind", text="Flow")
-                _r.prop(settings, "flow_strength", text="强度")
+            # W1 扩展参数:Orientation(各向异性扩散) + Flow(空间平流)
+            _r = box.row(align=True)
+            _r.prop(settings, "orientation_kind", text="Orientation")
+            _r.prop(settings, "orientation_strength", text="强度")
+            _r = box.row(align=True)
+            _r.prop(settings, "flow_kind", text="Flow")
+            _r.prop(settings, "flow_strength", text="强度")
+            if settings.field_kind == "mesh":
+                box.label(text=_L("网格上:取向=边方向投影权重,流动=顶点最近邻平流",
+                                  "Mesh: orientation = edge weights, flow = vertex advection"), icon="INFO")
+            if settings.field_kind == "grid":
                 box.operator("ready.pattern_map_pick",
                              text=_L("从图案地图选择 (k,F)", "Pick (k,F) from Pattern Map"),
                              icon="IMAGE_REFERENCE")

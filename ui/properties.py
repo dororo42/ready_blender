@@ -120,6 +120,10 @@ def _param_changed(self, context):
             "Du": Du_eff, "Dv": Dv_eff,
             "F": self.param_F, "k": self.param_k,
             "dt": dt_eff, "wrap": self.grid_wrap, "_n_sub": n_sub,
+            "orientation_kind": getattr(self, "orientation_kind", "none"),
+            "orientation_strength": getattr(self, "orientation_strength", 0.0),
+            "flow_kind": getattr(self, "flow_kind", "none"),
+            "flow_strength": getattr(self, "flow_strength", 0.0),
         })
         eng.mark_dirty("hot")
     except Exception:

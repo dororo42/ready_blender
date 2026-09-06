@@ -33,6 +33,45 @@ class GrayScottRule(Rule):
     name = "Gray-Scott"
     n_chemicals = 2
 
+    _mesh_ext_cache = None  # (key, weights, vel) 顶点域扩展缓存
+
+    def _mesh_ext(self, params, nbr):
+        """3D 网格扩展:Orientation 各向异性边权重 + Flow 速度场(带缓存)。"""
+        verts = params.get("mesh_verts")
+        if verts is None:
+            return None, None
+        o_kind = params.get("orientation_kind", "none")
+        o_str = float(params.get("orientation_strength", 0.0) or 0.0)
+        f_kind = params.get("flow_kind", "none")
+        f_str = float(params.get("flow_strength", 0.0) or 0.0)
+        w = None
+        vel = None
+        if o_kind and o_kind != "none" and o_str > 0:
+            key = ("o", id(verts), o_kind, round(o_str, 3), id(nbr[0]))
+            if self._mesh_ext_cache and self._mesh_ext_cache[0] == key:
+                w = self._mesh_ext_cache[1]
+            else:
+                try:
+                    from .vertex_rd import orientation_vectors_3d, aniso_edge_weights
+                    dirs = orientation_vectors_3d(verts, o_kind)
+                    w = aniso_edge_weights(nbr[0], nbr[1], verts, dirs,
+                                           min(o_str, 0.95))
+                except Exception:
+                    w = None
+                self._mesh_ext_cache = (key, w, None)
+        if f_kind and f_kind != "none" and f_str > 0:
+            key = ("f", id(verts), f_kind, round(f_str, 4), id(nbr[0]))
+            if self._mesh_ext_cache and self._mesh_ext_cache[0] == key:
+                vel = self._mesh_ext_cache[2]
+            else:
+                try:
+                    from .vertex_rd import velocity_field_3d
+                    vel = velocity_field_3d(verts, f_kind, f_str)
+                except Exception:
+                    vel = None
+                self._mesh_ext_cache = (key, None, vel)
+        return w, vel
+
     def update(self, fields, params, dt, field_kind="grid", nbr=None):
         a, b = fields[0], fields[1]
         Du, Dv = params["Du"], params["Dv"]
@@ -51,8 +90,20 @@ class GrayScottRule(Rule):
                 lap_a = laplacian_5(a, wrap)
                 lap_b = laplacian_5(b, wrap)
         elif field_kind == "mesh":
-            lap_a = graph_laplacian(a, nbr[0], nbr[1])
-            lap_b = graph_laplacian(b, nbr[0], nbr[1])
+            # 3D 扩展:Orientation(各向异性边权重,行归一化保稳定) + Flow(顶点平流)
+            nbr_w = nbr[1]
+            _w, _vel = self._mesh_ext(params, nbr)
+            if _w is not None:
+                nbr_w = _w
+            lap_a = graph_laplacian(a, nbr[0], nbr_w)
+            lap_b = graph_laplacian(b, nbr[0], nbr_w)
+            if _vel is not None:
+                try:
+                    from .vertex_rd import advect_mesh
+                    advect_mesh(a, params.get("mesh_verts"), _vel, dt, nbr[0])
+                    advect_mesh(b, params.get("mesh_verts"), _vel, dt, nbr[0])
+                except Exception:
+                    pass
         else:
             raise ValueError(field_kind)
         abb = a * b * b

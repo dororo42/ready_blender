@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>linusmossberg reaction-diffusion 学习与本地化报告</title>
+<style>
+  :root { --fg:#1a2332; --muted:#6b7686; --accent:#0f62fe; --bg:#f4f6fb; --card:#fff; --line:#dfe4ee; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.7 "Segoe UI","Microsoft YaHei",sans-serif; color:var(--fg); background:var(--bg); }
+  header { background:linear-gradient(135deg,#0f62fe,#3b82f6); color:#fff; padding:34px 28px 26px; }
+  header h1 { margin:0 0 6px; font-size:24px; }
+  header p { margin:0; opacity:.92; font-size:13px; }
+  main { max-width:1024px; margin:0 auto; padding:22px 18px 60px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin:16px 0; }
+  h2 { font-size:18px; margin:0 0 12px; border-left:4px solid var(--accent); padding-left:10px; }
+  h3 { font-size:15px; margin:14px 0 6px; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; margin:8px 0; }
+  th, td { border:1px solid var(--line); padding:5px 7px; text-align:left; }
+  th { background:#eef2fb; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin:10px 0; }
+  .card { background:#f8fafd; border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .card .t { font-weight:700; margin-bottom:4px; }
+  .card .d { color:var(--muted); font-size:13px; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; background:#e4f0ff; color:#0f62fe; margin-right:6px; }
+  .ok { background:#e6f7ec; color:#137a3a; }
+  .warn { background:#fff4e0; color:#a05a00; }
+  pre { background:#10151f; color:#dbe4f0; padding:12px; border-radius:8px; overflow:auto; font-size:12px; }
+  code { font-family:Consolas,monospace; font-size:12.5px; background:#eef1f7; padding:1px 5px; border-radius:4px; }
+  .steps { counter-reset:s; }
+  .step { display:flex; gap:12px; margin:8px 0; }
+  .step .n { flex:0 0 26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; text-align:center; line-height:26px; font-weight:700; font-size:13px; }
+  .step .b { flex:1; }
+  .step .b .t { font-weight:700; }
+  .step .b .d { color:var(--muted); font-size:13px; }
+  footer { color:var(--muted); font-size:12px; text-align:center; padding:18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>linusmossberg / reaction-diffusion — 学习、完全本地化与预设借鉴报告</h1>
+  <p>v1 · 2026-08-25 · 来源:github.com/linusmossberg/reaction-diffusion (MIT © 2020 Linus Mossberg)</p>
+</header>
+<main>
+
+<section>
+  <h2>一、结论摘要</h2>
+  <div class="grid">
+    <div class="card"><div class="t">许可</div><div class="d"><span class="badge ok">MIT</span>可完全本地化/借鉴,保留版权声明即可</div></div>
+    <div class="card"><div class="t">本地化</div><div class="d">✅ 单文件 <code>web/reaction-diffusion.html</code> 689 KB,零外部引用,file:// 直开</div></div>
+    <div class="card"><div class="t">预设借鉴</div><div class="d">✅ 20 组换算注入,插件预设 12 → <b>32</b> 项</div></div>
+    <div class="card"><div class="t">导入链</div><div class="d">✅ 网页导出 JSON → 插件「导入 JSON」→ 下拉即时出现</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>二、技术解读</h2>
+  <p>WebGL(GPUComputationRenderer)+ three.js + dat.gui + SimplexNoise 纯前端应用。内核为 Gray-Scott 标准方程 + Witkin &amp; Kass 1995 的 9 点各向异性扩散核。</p>
+  <pre>反应项: reaction = (−u·v², +u·v²)
+耗散项: dissipation = (F·(1−u), −v·(K+F))
+扩散项: 各向异性核 · DS · (1.0, 0.5)
+时间步: dt = 1.0 / (4.0·DS)   ← 自适应稳定步长
+边界:   ClampToEdge(非周期)
+环境场: SimplexNoise 4 通道(F/K/DS/角度),noise_scale 控制空间频率</pre>
+  <h3>与 ready_blender 插件换算</h3>
+  <table>
+    <tr><th>项</th><th>linusmossberg</th><th>ready_blender</th><th>换算</th></tr>
+    <tr><td>拉普拉斯核</td><td>9 点归一化(中心 −3.333)</td><td>5 点(中心 −4)</td><td>核强度 3.333:4</td></tr>
+    <tr><td>扩散系数</td><td>DS·(1.0, 0.5)</td><td>Du, Dv</td><td><b>Du ≈ 0.256·DS</b>,Dv=0.5Du 天然一致</td></tr>
+    <tr><td>F / k</td><td>feed / kill</td><td>F / k</td><td><b>直接通用</b>(方程同构)</td></tr>
+    <tr><td>时间步</td><td>dt=1/(4DS) 自适应</td><td>dt 固定(默认 1.0)</td><td>插件 1d 子步机制等效</td></tr>
+    <tr><td>边界</td><td>clamp</td><td>wrap 可选</td><td>仅边缘一圈差异</td></tr>
+    <tr><td>各向异性</td><td>a1∈[0.1,0.9],0.5=各向同性</td><td>α(wx+wy≡2,3a 阶段)</td><td>参考 α≈2·(a1−0.5)</td></tr>
+  </table>
+  <p class="muted" style="color:#6b7686;font-size:13px;">换算推导:扩散总量 ∝ 核权重×系数。他每单位时间 (20/6)·DS·dt≈0.833;插件 4·Du·dt=0.64。λ∝√(D/反应率),取 DS=0.625→Du=0.16 为基准得 Du≈0.256·DS。近似值,建议 ±20% 微调。</p>
+</section>
+
+<section>
+  <h2>三、本地化方案(已实施)</h2>
+  <div class="steps">
+    <div class="step"><span class="n">1</span><div class="b"><div class="t">内联全部依赖</div><div class="d">three.min.js / GPUComputationRenderer / SimplexNoise / dat.gui / 2×shader / css / 字体 / svg → 11 个 script 块单文件</div></div></div>
+    <div class="step"><span class="n">2</span><div class="b"><div class="t">移除 Google Analytics</div><div class="d">离线自包含,正则扫描 0 处 http(s) 引用</div></div></div>
+    <div class="step"><span class="n">3</span><div class="b"><div class="t">新增导出 JSON/CSV</div><div class="d">右上角工具栏;JSON 遵循插件 preset_io W4 schema(Du=0.256·DS 实时换算)</div></div></div>
+    <div class="step"><span class="n">4</span><div class="b"><div class="t">版权声明</div><div class="d">工具栏标注 + HTML 注释含 MIT 全文与原始出处</div></div></div>
+    <div class="step"><span class="n">5</span><div class="b"><div class="t">Blender 接线</div><div class="d">面板「打开 RD 网页工具」(file://) + 「导入 JSON」→ user_presets.json → 下拉即时出现</div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>四、20 组预设借鉴清单(已注入插件)</h2>
+  <p>换算口径:Du=0.256·DS、Dv=0.5·Du、F=feed、k=kill、dt=1.0;anisotropy 与空间变体存入 extensions 待 2/3a 阶段接线。</p>
+  <table>
+<tr><th>#</th><th>预设(中/英)</th><th>DS</th><th>feed</th><th>kill</th><th>aniso</th><th>换算 Du</th><th>换算 Dv</th><th>F</th><th>k</th></tr>
+<tr><td>1</td><td>默认 Default</td><td>0.625</td><td>0.042</td><td>0.060</td><td>0.8</td><td>0.16</td><td>0.08</td><td>0.042</td><td>0.060</td></tr>
+<tr><td>2</td><td>沙漠斑马 Dunes/Zebra</td><td>0.25</td><td>0.050</td><td>0.061</td><td>0.9</td><td>0.064</td><td>0.032</td><td>0.050</td><td>0.061</td></tr>
+<tr><td>3</td><td>指纹 Fingerprints</td><td>0.25</td><td>0.037</td><td>0.060</td><td>0.8</td><td>0.064</td><td>0.032</td><td>0.037</td><td>0.060</td></tr>
+<tr><td>4</td><td>斑点与虫纹 Spots and Worms</td><td>0.5</td><td>0.034</td><td>0.0618</td><td>0.5</td><td>0.128</td><td>0.064</td><td>0.034</td><td>0.0618</td></tr>
+<tr><td>5</td><td>细胞分裂 Cell Division</td><td>0.625</td><td>0.030</td><td>0.063</td><td>0.5</td><td>0.16</td><td>0.08</td><td>0.030</td><td>0.063</td></tr>
+<tr><td>6</td><td>浮标 Buoys</td><td>0.25</td><td>0.025</td><td>0.060</td><td>0.9</td><td>0.064</td><td>0.032</td><td>0.025</td><td>0.060</td></tr>
+<tr><td>7</td><td>洋流 Currents</td><td>0.25</td><td>0.080</td><td>0.060</td><td>0.9</td><td>0.064</td><td>0.032</td><td>0.080</td><td>0.060</td></tr>
+<tr><td>8</td><td>油污 Oil Spill</td><td>0.5</td><td>0.0475</td><td>0.060</td><td>0.1</td><td>0.128</td><td>0.064</td><td>0.0475</td><td>0.060</td></tr>
+<tr><td>9</td><td>密集孔洞 Trypophobia</td><td>0.25</td><td>0.039</td><td>0.0581</td><td>0.9</td><td>0.064</td><td>0.032</td><td>0.039</td><td>0.0581</td></tr>
+<tr><td>10</td><td>旅者 Travellers</td><td>0.5</td><td>0.014</td><td>0.054</td><td>0.8</td><td>0.128</td><td>0.064</td><td>0.014</td><td>0.054</td></tr>
+<tr><td>11</td><td>海洋 Ocean</td><td>0.625</td><td>0.014</td><td>0.040</td><td>0.1</td><td>0.16</td><td>0.08</td><td>0.014</td><td>0.040</td></tr>
+<tr><td>12</td><td>微分线 Differential Line</td><td>0.5</td><td>0.072</td><td>0.062</td><td>0.3</td><td>0.128</td><td>0.064</td><td>0.072</td><td>0.062</td></tr>
+<tr><td>13</td><td>沃罗诺伊 Voronoi</td><td>0.25</td><td>0.098</td><td>0.0555</td><td>0.5</td><td>0.064</td><td>0.032</td><td>0.098</td><td>0.0555</td></tr>
+<tr><td>14</td><td>虫纹 Worms</td><td>0.25</td><td>0.058</td><td>0.065</td><td>0.5</td><td>0.064</td><td>0.032</td><td>0.058</td><td>0.065</td></tr>
+<tr><td>15</td><td>虫洞迷宫 Worm Mazes</td><td>0.25</td><td>0.046</td><td>0.063</td><td>0.7</td><td>0.064</td><td>0.032</td><td>0.046</td><td>0.063</td></tr>
+<tr><td>16</td><td>迷宫 Maze</td><td>0.25</td><td>0.030</td><td>0.0565</td><td>0.5</td><td>0.064</td><td>0.032</td><td>0.030</td><td>0.0565</td></tr>
+<tr><td>17</td><td>不稳定迷宫 Unstable Maze</td><td>0.25</td><td>0.026</td><td>0.055</td><td>0.5</td><td>0.064</td><td>0.032</td><td>0.026</td><td>0.055</td></tr>
+<tr><td>18</td><td>撕裂 Ripping</td><td>0.375</td><td>0.034</td><td>0.056</td><td>0.9</td><td>0.096</td><td>0.048</td><td>0.034</td><td>0.056</td></tr>
+<tr><td>19</td><td>波浪 Waves</td><td>0.25</td><td>0.013</td><td>0.045</td><td>0.9</td><td>0.064</td><td>0.032</td><td>0.013</td><td>0.045</td></tr>
+<tr><td>20</td><td>张量场可视化 Tensor Field</td><td>0.375</td><td>0.030</td><td>0.063</td><td>0.9</td><td>0.096</td><td>0.048</td><td>0.030</td><td>0.063</td></tr>
+</table>
+</section>
+
+<section>
+  <h2>五、与既有方案的关系</h2>
+  <div class="grid">
+    <div class="card"><div class="t">1b 缩略图枚举</div><div class="d">插件内快速识别,20 组 LM 预设自动获得缩略图</div></div>
+    <div class="card"><div class="t">1c 点击取参弹窗</div><div class="d">插件内 (k,F) 地图点选</div></div>
+    <div class="card"><div class="t">本页面</div><div class="d">插件外实时动画 + 20 预设 + Phong 渲染 + 导出存档</div></div>
+    <div class="card"><div class="t">W1 地图页(计划)</div><div class="d">可由本页面替代或共存;导出 schema 共用</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>六、风险与验证</h2>
+  <table>
+    <tr><th>项</th><th>状态</th></tr>
+    <tr><td>许可合规</td><td><span class="badge ok">✅</span>MIT,版权声明已保留</td></tr>
+    <tr><td>内联 JS 语法</td><td><span class="badge ok">✅</span>11 个 script 块 node --check 全过</td></tr>
+    <tr><td>外部引用</td><td><span class="badge ok">✅</span>0 处,完全离线</td></tr>
+    <tr><td>插件回归</td><td><span class="badge ok">✅</span>语法 49 文件 + 测试套件通过</td></tr>
+    <tr><td>浏览器实机验证</td><td><span class="badge warn">⚠</span>本机无图形浏览器自动化;请双击打开确认(Chrome/Edge/Firefox 均支持 WebGL)</td></tr>
+    <tr><td>换算精度</td><td><span class="badge warn">⚠</span>Du≈0.256·DS 为近似;F/k 直接通用,个别预设若尺度偏差微调 Du ±20%</td></tr>
+    <tr><td>file:// 限制</td><td><span class="badge warn">⚠</span>localStorage 有浏览器警告但可用;导出以文件下载为主路径</td></tr>
+  </table>
+</section>
+
+<footer>ready_blender · 净室实现原则:本报告基于公开仓库学习与数学换算,本地化保留 MIT 版权声明;插件侧数值口径以自身求解内核为准。</footer>
+</main>
+</body>
+</html>
