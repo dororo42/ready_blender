@@ -10,9 +10,17 @@ from fileio.vtk_writer import write_vti
 
 
 def test_all():
-    PATTERNS = r"C:\Users\Administrator\.openclaw-autoclaw\workspace\.cluster\ready-blender-analysis\repo_src\ready-Ready-0.6\Patterns"
+    PATTERNS = os.environ.get(
+        "READY_PATTERNS_DIR",
+        r"C:\Users\Administrator\.openclaw-autoclaw\workspace\.cluster\ready-blender-analysis\repo_src\ready-Ready-0.6\Patterns")
     if not os.path.isdir(PATTERNS):
-        print(f"[SKIP] patterns 目录不存在,跳过")
+        # CI/无 Ready 生态环境:优雅跳过(GPL pattern 文件不入库)
+        try:
+            import pytest
+            pytest.skip("patterns 目录不存在(设 READY_PATTERNS_DIR 可启用)")
+        except ImportError:
+            print(f"[SKIP] patterns 目录不存在: {PATTERNS}")
+            return
 
     # 1) Gray-Scott pattern:参数映射(inbuilt → settings 五参数)
     GS2D = os.path.join(PATTERNS, "CPU-only", "grayscott_2D.vti")

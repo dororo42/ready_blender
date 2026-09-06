@@ -7,18 +7,26 @@
 3. Gray-Scott 面域仿真:三角网格 → 面邻接 → 带取向/平流扩展步进,有限且出图;
 4. preset_io 导入/导出往返。
 """
+import importlib.util
 import os
 import sys
 
 import bpy  # noqa: F401  真实 Blender 运行时
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-import ready_blender  # noqa: E402  包模式导入自检(注册与否不影响导入)
-from core.rule import GrayScottRule  # noqa: E402
-from core.meshgen import triangular  # noqa: E402
-from core.field import build_face_adjacency  # noqa: E402
+# 仓库根目录名未必等于包名(任意克隆目录),按路径显式加载包
+_spec = importlib.util.spec_from_file_location(
+    "ready_blender", os.path.join(REPO, "__init__.py"),
+    submodule_search_locations=[REPO])
+ready_blender = importlib.util.module_from_spec(_spec)
+sys.modules["ready_blender"] = ready_blender
+_spec.loader.exec_module(ready_blender)
+
+from ready_blender.core.rule import GrayScottRule  # noqa: E402
+from ready_blender.core.meshgen import triangular  # noqa: E402
+from ready_blender.core.field import build_face_adjacency  # noqa: E402
 
 assert ready_blender.bl_info["name"] == "Ready: Reaction-Diffusion"
 
@@ -39,7 +47,8 @@ for _ in range(200):
 assert np.isfinite(a).all() and np.isfinite(b).all(), "仿真出现 NaN/Inf"
 assert (b > 0.01).any(), "200 步后无图案"
 
-from fileio.preset_io import export_preset_dict, import_preset_dict  # noqa: E402
+from ready_blender.fileio.preset_io import (export_preset_dict,  # noqa: E402
+                                            import_preset_dict)
 
 d = export_preset_dict({"Du": 0.16, "Dv": 0.08, "F": 0.034, "k": 0.0618, "dt": 1.0},
                        "ci 往返", preset_id="ci_1")

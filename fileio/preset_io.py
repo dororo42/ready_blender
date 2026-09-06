@@ -107,8 +107,12 @@ def import_preset_dict(d):
     return out
 
 
-def load_user_presets(user_file=DEFAULT_USER_FILE):
-    """读用户预设列表;文件不存在/损坏返回 []。"""
+def load_user_presets(user_file=None):
+    """读用户预设列表;文件不存在/损坏返回 []。
+
+    user_file 缺省时运行时取 DEFAULT_USER_FILE(默认参数会在定义时绑定,
+    测试覆盖模块属性将失效,故不用默认参数绑定)。
+    """
     if not user_file:
         user_file = DEFAULT_USER_FILE
     paths = [user_file]
