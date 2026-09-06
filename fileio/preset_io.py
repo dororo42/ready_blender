@@ -128,7 +128,10 @@ def load_user_presets(user_file=DEFAULT_USER_FILE):
 
 
 def write_user_preset(d, user_file=None):
-    """把规范化后的预设追加进用户文件;同 id 去重覆盖。返回 True。"""
+    """把规范化后的预设追加进用户文件;同 id 去重覆盖。
+
+    返回实际写入路径(主路径,主路径只读时为回退路径 ~/.ready_blender_user_presets.json)。
+    """
     d = import_preset_dict(dict(d))  # 再校验一次(调用方未规范化时兜底)
     if not user_file:
         user_file = DEFAULT_USER_FILE

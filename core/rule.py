@@ -102,8 +102,9 @@ class GrayScottRule(Rule):
                     from .vertex_rd import advect_mesh
                     advect_mesh(a, params.get("mesh_verts"), _vel, dt, nbr[0])
                     advect_mesh(b, params.get("mesh_verts"), _vel, dt, nbr[0])
-                except Exception:
-                    pass
+                except Exception as e:
+                    # 平流失败不中断模拟,但留痕(静默吞错会误导远程排障)
+                    print(f"[ready_blender] flow advect skipped: {e}")
         else:
             raise ValueError(field_kind)
         abb = a * b * b

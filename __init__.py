@@ -98,6 +98,7 @@ def register():
                 ui_ops.RD_OT_remesh_copy,
                 ui_ops.RD_OT_pattern_map_pick,
                 ui_ops.RD_OT_import_preset_json,
+                ui_ops.RD_OT_paste_preset_json,
                 ui_ops.RD_OT_open_rdtool_web,
                 ui_ops.RD_OT_grow3d_pipeline):
         _safe_register(cls)
@@ -168,6 +169,7 @@ def unregister():
                 ui_ops.RD_OT_remesh_copy,
                 ui_ops.RD_OT_pattern_map_pick,
                 ui_ops.RD_OT_import_preset_json,
+                ui_ops.RD_OT_paste_preset_json,
                 ui_ops.RD_OT_open_rdtool_web,
                 ui_ops.RD_OT_grow3d_pipeline):
         _safe_unregister(cls)
