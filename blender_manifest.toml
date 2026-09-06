@@ -3,7 +3,7 @@ id = "ready_blender"
 version = "0.1.1"
 name = "Ready: Reaction-Diffusion"
 tagline = "Reaction-diffusion simulation on meshes and grids (Gray-Scott)"
-maintainer = "TBD"
+maintainer = "dororo42"
 type = "add-on"
 blender_version_min = "4.2.0"
 license = ["SPDX:GPL-3.0-or-later"]
@@ -16,6 +16,6 @@ paths_exclude_pattern = [
     ".*",
     "*.pyc",
     "tests/",
-    "benchmark_m0.py",
-    "save_pearson.py",
+    "tools/",
+    ".github/",
 ]

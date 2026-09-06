@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  numpy-tests:
+    name: 单元测试(numpy,无 Blender)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装依赖
+        run: pip install numpy pytest
+      - name: 运行全量测试
+        run: pytest tests -q
+
+  blender-core-smoke:
+    name: Blender 核心冒烟(bpy 4.5 无头)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"  # bpy 4.5 wheel 绑定 CPython 3.11
+      - name: 安装 bpy
+        run: pip install bpy==4.5.* numpy pytest
+      - name: 无头冒烟(插件导入 + Gray-Scott 面域仿真)
+        run: python tests/ci_bpy_smoke.py
