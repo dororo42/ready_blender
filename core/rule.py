@@ -33,43 +33,51 @@ class GrayScottRule(Rule):
     name = "Gray-Scott"
     n_chemicals = 2
 
-    _mesh_ext_cache = None  # (key, weights, vel) 顶点域扩展缓存
-
     def _mesh_ext(self, params, nbr):
-        """3D 网格扩展:Orientation 各向异性边权重 + Flow 速度场(带缓存)。"""
-        verts = params.get("mesh_verts")
-        if verts is None:
+        """3D 网格扩展:Orientation 各向异性边权重 + Flow 速度场(带缓存)。
+
+        位置数组为面中心(params["mesh_centers"],与 nbr 的面域索引一致——
+        引擎 mesh 路径状态与邻接都在面域);缓存放 params,热更新(update)
+        保留、拓扑重建(新 params)自然失效。
+        """
+        centers = params.get("mesh_centers")
+        if centers is None:
             return None, None
         o_kind = params.get("orientation_kind", "none")
         o_str = float(params.get("orientation_strength", 0.0) or 0.0)
         f_kind = params.get("flow_kind", "none")
         f_str = float(params.get("flow_strength", 0.0) or 0.0)
+        cache = params.setdefault("_mesh_ext_cache", {})
         w = None
         vel = None
         if o_kind and o_kind != "none" and o_str > 0:
-            key = ("o", id(verts), o_kind, round(o_str, 3), id(nbr[0]))
-            if self._mesh_ext_cache and self._mesh_ext_cache[0] == key:
-                w = self._mesh_ext_cache[1]
+            key = ("o", id(centers), o_kind, round(o_str, 3), id(nbr[0]))
+            hit = cache.get("o")
+            if hit and hit[0] == key:
+                w = hit[1]
             else:
                 try:
                     from .vertex_rd import orientation_vectors_3d, aniso_edge_weights
-                    dirs = orientation_vectors_3d(verts, o_kind)
-                    w = aniso_edge_weights(nbr[0], nbr[1], verts, dirs,
+                    dirs = orientation_vectors_3d(centers, o_kind)
+                    w = aniso_edge_weights(nbr[0], nbr[1], centers, dirs,
                                            min(o_str, 0.95))
-                except Exception:
+                except Exception as e:
+                    print(f"[ready_blender] orientation skipped: {e}")
                     w = None
-                self._mesh_ext_cache = (key, w, None)
+                cache["o"] = (key, w)
         if f_kind and f_kind != "none" and f_str > 0:
-            key = ("f", id(verts), f_kind, round(f_str, 4), id(nbr[0]))
-            if self._mesh_ext_cache and self._mesh_ext_cache[0] == key:
-                vel = self._mesh_ext_cache[2]
+            key = ("f", id(centers), f_kind, round(f_str, 4), id(nbr[0]))
+            hit = cache.get("f")
+            if hit and hit[0] == key:
+                vel = hit[1]
             else:
                 try:
                     from .vertex_rd import velocity_field_3d
-                    vel = velocity_field_3d(verts, f_kind, f_str)
-                except Exception:
+                    vel = velocity_field_3d(centers, f_kind, f_str)
+                except Exception as e:
+                    print(f"[ready_blender] flow skipped: {e}")
                     vel = None
-                self._mesh_ext_cache = (key, None, vel)
+                cache["f"] = (key, vel)
         return w, vel
 
     def update(self, fields, params, dt, field_kind="grid", nbr=None):
@@ -100,8 +108,8 @@ class GrayScottRule(Rule):
             if _vel is not None:
                 try:
                     from .vertex_rd import advect_mesh
-                    advect_mesh(a, params.get("mesh_verts"), _vel, dt, nbr[0])
-                    advect_mesh(b, params.get("mesh_verts"), _vel, dt, nbr[0])
+                    advect_mesh(a, params.get("mesh_centers"), _vel, dt, nbr[0])
+                    advect_mesh(b, params.get("mesh_centers"), _vel, dt, nbr[0])
                 except Exception as e:
                     # 平流失败不中断模拟,但留痕(静默吞错会误导远程排障)
                     print(f"[ready_blender] flow advect skipped: {e}")

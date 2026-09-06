@@ -203,7 +203,7 @@ class ReadySettings(bpy.types.PropertyGroup):
         name="取向类型",
         items=[
             ("none", "关闭", "等向扩散(默认)"),
-            ("linear", "线性(竖直)", "全图统一竖直方向(90°),strength 越强图案越条纹化"),
+            ("linear", "线性(竖直)", "全图统一竖直方向(90°);网格模式沿局部 Y,顶视图下与网页选参工具一致"),
             ("horizontal", "线性(水平)", "全图统一水平方向(0°)"),
             ("radial", "径向", "取向指向圆心"),
             ("circles", "同心圆", "取向沿圆周切向"),
@@ -213,7 +213,7 @@ class ReadySettings(bpy.types.PropertyGroup):
         default="none", update=_param_changed)
     orientation_strength: bpy.props.FloatProperty(
         name="取向强度", default=0.0, min=0.0, max=0.95, precision=2, update=_param_changed,
-        description="各向异性强度 0~0.95;0=等向。仅 grid 模式(Gray-Scott)生效")
+        description="各向异性强度 0~0.95;0=等向。2D 网格与 3D 面域模式均生效(Gray-Scott)")
     flow_kind: bpy.props.EnumProperty(
         name="流动类型",
         items=[
@@ -229,7 +229,7 @@ class ReadySettings(bpy.types.PropertyGroup):
         default="none", update=_param_changed)
     flow_strength: bpy.props.FloatProperty(
         name="流动强度", default=0.0, min=0.0, max=1.0, precision=3, update=_param_changed,
-        description="平流速度强度;仅 grid 模式(Gray-Scott)生效")
+        description="平流速度强度;2D 网格与 3D 面域模式均生效(Gray-Scott)")
 
     # 运行
     tick_steps: bpy.props.IntProperty(name="Steps per Tick", default=50, min=1, max=2000)

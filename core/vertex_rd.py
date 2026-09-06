@@ -107,10 +107,10 @@ def _safe_norm(v, eps=1e-12):
 
 
 def orientation_vectors_3d(verts, kind, centroid=None):
-    """网格顶点各向异性主轴方向场 (N,3) 单位向量。
+    """采样点各向异性主轴方向场 (N,3) 单位向量(引擎 mesh 路径的采样点=面中心)。
 
-    linear=竖直(Y) / horizontal=水平(X) / radial=背离质心 /
-    circles=绕 Y 轴切向 / swirl=径向+切向混合 / bubble=向外(简化)。
+    linear=竖直(局部 Y,顶视图下与网页选参工具一致) / horizontal=水平(局部 X) /
+    radial=背离质心 / circles=绕 Y 轴切向 / swirl=径向+切向混合 / bubble=向外(简化)。
     """
     verts = np.asarray(verts, dtype=np.float32)
     n = len(verts)
@@ -139,7 +139,7 @@ def orientation_vectors_3d(verts, kind, centroid=None):
 
 
 def velocity_field_3d(verts, kind, strength, centroid=None):
-    """网格顶点速度场 (N,3);7 种与 2D 同语义的 3D 版本,模长有界 ≤|strength|·1.4。"""
+    """采样点速度场 (N,3)(引擎 mesh 路径的采样点=面中心);7 种与 2D 同语义的 3D 版本,模长有界 ≤|strength|·1.4。"""
     verts = np.asarray(verts, dtype=np.float32)
     s = float(strength)
     n = len(verts)
@@ -203,7 +203,8 @@ def aniso_edge_weights(nbr_idx, nbr_w, verts, dirs, alpha):
 def advect_mesh(u, verts, vel, dt, nbr_idx):
     """半拉格朗日平流(最近邻版):回溯点 pos−vel·dt,在 {自身}∪{邻居} 中取最近。
 
-    顶点粒度近似(网格平流无解析插值),速度场较弱时视觉正确;常数场恒等。
+    面中心粒度近似(网格平流无解析插值),速度场较弱时视觉正确;常数场恒等。
+    注意:verts 必须与 nbr_idx 同域(引擎 mesh 路径为面中心 (F,3))。
     """
     verts = np.asarray(verts, dtype=np.float32)
     vel = np.asarray(vel, dtype=np.float32)

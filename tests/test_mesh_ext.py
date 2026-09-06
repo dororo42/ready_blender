@@ -112,7 +112,7 @@ def test_rule_mesh_orientation_changes_output():
         b[rng.integers(0, len(verts), 8)] = 1.0
         return [a, b]
     p = dict(Du=0.16, Dv=0.08, F=0.0545, k=0.062, dt=1.0,
-             mesh_verts=verts, wrap=False)
+             mesh_centers=verts, wrap=False)
     base = fresh()
     for _ in range(150):
         r.update(base, p, 1.0, field_kind="mesh", nbr=nbr)
@@ -135,7 +135,7 @@ def test_rule_mesh_flow_changes_output():
         b[rng.integers(0, len(verts), 8)] = 1.0
         return [a, b]
     p = dict(Du=0.16, Dv=0.08, F=0.0545, k=0.062, dt=1.0,
-             mesh_verts=verts, wrap=False)
+             mesh_centers=verts, wrap=False)
     base = fresh()
     for _ in range(120):
         r.update(base, p, 1.0, field_kind="mesh", nbr=nbr)
@@ -157,7 +157,7 @@ def test_rule_mesh_noext_bitwise_identical():
     b = np.zeros(len(verts), np.float32)
     b[seeds] = 1.0
     p = dict(Du=0.16, Dv=0.08, F=0.0545, k=0.062, dt=1.0,
-             mesh_verts=verts, wrap=False,
+             mesh_centers=verts, wrap=False,
              orientation_kind="none", orientation_strength=0.0,
              flow_kind="none", flow_strength=0.0)
     r = GrayScottRule()
@@ -177,6 +177,113 @@ def test_rule_mesh_noext_bitwise_identical():
         np.clip(a2, 0.0, 2.0, out=a2)
         np.clip(b2, 0.0, 1.0, out=b2)
     assert np.array_equal(a, a2) and np.array_equal(b, b2)
+
+
+def test_rule_mesh_face_domain_adjacency():
+    """回归(真机发现的 P1):引擎 mesh 路径状态与 nbr 都在面域,
+    扩展函数必须用面中心 (F,3) 而非顶点坐标——F≠N 的网格上旧实现
+    用面索引取顶点数组会越界(或静默错位)。"""
+    from core.meshgen import triangular
+    from core.field import build_face_adjacency
+    verts, faces = triangular(24, 24)
+    centers = verts[faces].mean(axis=1).astype(np.float32)
+    nbr_idx, nbr_w, _, _ = build_face_adjacency(faces, "vertex")
+    assert len(centers) != len(verts)  # F≠N:正是旧实现踩中的域错配
+    r = GrayScottRule()
+    rng = np.random.default_rng(9)
+    a = np.ones(len(centers), np.float32)
+    b = np.zeros(len(centers), np.float32)
+    b[rng.integers(0, len(centers), 20)] = 1.0
+    p = dict(Du=0.16, Dv=0.08, F=0.0545, k=0.062, dt=1.0,
+             mesh_centers=centers, wrap=False,
+             orientation_kind="radial", orientation_strength=0.8,
+             flow_kind="vortex", flow_strength=0.5)
+    for _ in range(60):
+        r.update([a, b], p, 1.0, field_kind="mesh", nbr=(nbr_idx, nbr_w))
+    assert np.isfinite(a).all() and np.isfinite(b).all()
+    assert np.allclose(nbr_w.sum(axis=1), 1.0, atol=1e-4)  # 原邻接语义未被破坏
+
+
+def test_rule_mesh_ext_cache_survives_hot_update():
+    """缓存放入 params:热更新(update 只改部分键)后仍命中,拓扑重建(新 params)失效。"""
+    verts, nbr, _ = make_plane()
+    r = GrayScottRule()
+    p = dict(Du=0.16, Dv=0.08, F=0.0545, k=0.062, dt=1.0,
+             mesh_centers=verts, wrap=False,
+             orientation_kind="radial", orientation_strength=0.8)
+    fields = [np.ones(len(verts), np.float32), np.zeros(len(verts), np.float32)]
+    for _ in range(3):
+        r.update(fields, p, 1.0, field_kind="mesh", nbr=nbr)
+    assert "_mesh_ext_cache" in p and "o" in p["_mesh_ext_cache"]
+    w_cached = p["_mesh_ext_cache"]["o"][1]
+    # 模拟面板滑块热更:仅 update 部分键,缓存键仍有效 → 权重对象复用
+    p.update({"F": 0.05})
+    r.update(fields, p, 1.0, field_kind="mesh", nbr=nbr)
+    assert p["_mesh_ext_cache"]["o"][1] is w_cached
+
+
+def test_aniso_rowsum_all_alpha_random_cloud():
+    """性质:任意点云 × α∈[0,0.95],各向异性权重行和恒为 1、非负、填充槽为 0。"""
+    rng = np.random.default_rng(11)
+    n, k = 60, 5
+    idx = np.tile(np.arange(n)[:, None], (1, k))
+    for j in range(n):
+        idx[j, :k - 1] = rng.permutation(n)[:k - 1]  # 混入邻居,末槽留自身填充
+    nbr_w = np.full((n, k), 1.0 / k, np.float32)
+    pts = rng.standard_normal((n, 3)).astype(np.float32) * 2.0
+    for kind in ("linear", "radial", "swirl"):
+        d = orientation_vectors_3d(pts, kind)
+        for alpha in (0.0, 0.3, 0.8, 0.95):
+            w = aniso_edge_weights(idx, nbr_w, pts, d, alpha)
+            assert np.isfinite(w).all()
+            assert (w >= 0).all()
+            assert np.allclose(w.sum(axis=1), 1.0, atol=1e-4), (kind, alpha)
+            self_mask = idx == np.arange(n)[:, None]
+            assert np.allclose(w[self_mask], 0.0)
+
+
+def test_velocity_bounded_random_cloud():
+    """性质:任意点云上 7 种速度场均有限且模长有界(≤|strength|·1.5 容差)。"""
+    rng = np.random.default_rng(12)
+    pts = rng.standard_normal((200, 3)).astype(np.float32) * 5.0
+    for kind in ("vertical", "radial", "rotate", "swirl", "bubble", "ring", "vortex"):
+        v = velocity_field_3d(pts, kind, 1.0)
+        assert np.isfinite(v).all(), kind
+        assert np.abs(v).max() <= 1.5, (kind, float(np.abs(v).max()))
+
+
+def test_stability_alpha095_dt1():
+    """稳定性:α=0.95(枚举上限)+ dt=1.0,面域 300 步无 NaN/溢出(行归一化保谱)。"""
+    from core.meshgen import triangular
+    from core.field import build_face_adjacency
+    verts, faces = triangular(20, 20)
+    centers = verts[faces].mean(axis=1).astype(np.float32)
+    nbr_idx, nbr_w, _, _ = build_face_adjacency(faces, "vertex")
+    r = GrayScottRule()
+    rng = np.random.default_rng(13)
+    a = np.ones(len(centers), np.float32)
+    b = np.zeros(len(centers), np.float32)
+    b[rng.integers(0, len(centers), 30)] = 1.0
+    p = dict(Du=0.16, Dv=0.08, F=0.0545, k=0.062, dt=1.0,
+             mesh_centers=centers, wrap=False,
+             orientation_kind="linear", orientation_strength=0.95,
+             flow_kind="vortex", flow_strength=1.0)
+    for _ in range(300):
+        r.update([a, b], p, 1.0, field_kind="mesh", nbr=(nbr_idx, nbr_w))
+    assert np.isfinite(a).all() and np.isfinite(b).all()
+    assert float(np.abs(a).max()) < 10.0 and float(np.abs(b).max()) < 10.0
+
+
+def test_advect_large_dt_stays_finite():
+    """稳定性:极端 dt 的最近邻回溯不产生越界/NaN(采样域恒为 {自身}∪{邻居})。"""
+    verts, (idx, _), _ = make_plane()
+    u = np.random.default_rng(14).random(len(verts)).astype(np.float32)
+    v = velocity_field_3d(verts, "swirl", 1.0)
+    for dt in (0.0, 1.0, 50.0, 1e4):
+        u2 = u.copy()
+        advect_mesh(u2, verts, v, dt, idx)
+        assert np.isfinite(u2).all(), dt
+        assert set(np.unique(u2)).issubset(set(np.unique(u).tolist())), dt
 
 
 if __name__ == "__main__":

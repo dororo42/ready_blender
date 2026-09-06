@@ -156,11 +156,12 @@ def init_engine_from_settings(context):
         except ImportError:
             from adapters.mesh_adapter import mesh_to_field
         mf = mesh_to_field(obj, kind="vertex")
-        # 3D 扩展:顶点坐标(与 mf 顶点域索引一致)→ Orientation/Flow 用
-        # foreach_get 一次性批量取坐标,避免逐顶点 Python 循环(大网格卡顿)
+        # 3D 扩展:面中心坐标(与 mf 面域状态/邻接索引一致)→ Orientation/Flow 用。
+        # foreach_get 批量取顶点坐标(避免逐顶点 Python 循环),再按三角面聚合
         _raw = np.empty(len(obj.data.vertices) * 3, dtype=np.float32)
         obj.data.vertices.foreach_get("co", _raw)
         _mesh_verts = _raw.reshape(-1, 3)
+        _mesh_centers = _mesh_verts[mf.faces].mean(axis=1).astype(np.float32)
         if chem_base is None:
             # oil-water mesh 模式:面域双场白噪声(相分离由排斥动力学自行演化;
             # 图邻域版 Agmon 算法,见 core.rule.OilWaterRule._update_mesh)
@@ -181,7 +182,7 @@ def init_engine_from_settings(context):
             np.full(mf.data.shape[0], chem_base[1], dtype=np.float32),
         ]
         if hasattr(engine, "params"):
-            engine.params["mesh_verts"] = _mesh_verts
+            engine.params["mesh_centers"] = _mesh_centers
         # 初始条件:按 seed_region 选择扰动方式
         try:
             if settings.seed_region in ("uniform_sparse", "global"):
@@ -1762,6 +1763,12 @@ class RD_OT_paste_preset_json(bpy.types.Operator):
     bl_idname = "ready.paste_preset_json"
     bl_label = "Paste Preset JSON"
     bl_options = {"REGISTER"}
+
+    @classmethod
+    def poll(cls, context):
+        # 剪贴板没有 JSON 对象时按钮置灰,避免点了才报"预设不合法"
+        text = (getattr(context.window_manager, "clipboard", "") or "").strip()
+        return text.startswith("{")
 
     def execute(self, context):
         try:
