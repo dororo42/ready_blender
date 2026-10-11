@@ -69,7 +69,11 @@ class RD_OT_numba_install(bpy.types.Operator):
         import subprocess, sys
         prefs = context.preferences.addons[_addon_pkg()].preferences
         url = _get_mirror_url(prefs)
-        host = url.split("//")[1].split("/")[0]
+        # 从 URL 提取 host(--trusted-host 用);畸形 URL 不至于让操作符崩溃
+        if "//" in url:
+            host = url.split("//", 1)[1].split("/", 1)[0]
+        else:
+            host = url.split("/", 1)[0]
         self.report({"INFO"}, f"正在从 {url} 安装 Numba...")
         try:
             cmd = [sys.executable, "-m", "pip", "install", "numba",

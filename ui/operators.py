@@ -93,7 +93,10 @@ def init_engine_from_settings(context):
         pulse_idx = chems.index(sys_def["init"]["pulse_chem"])
         pulse_val = float(sys_def["init"]["pulse_value"])
     engine.field_kind = settings.field_kind
-    rng = np.random.default_rng(42)
+    engine.tick_steps = settings.tick_steps
+    engine.tick_interval = settings.tick_interval
+    # 复现性:全部初始化路径统一使用场景随机种子(oil-water 亦同源)
+    rng = np.random.default_rng(getattr(settings, "rng_seed", 42))
 
     if settings.field_kind == "grid":
         try:
@@ -220,8 +223,6 @@ def init_engine_from_settings(context):
             "faces": mf.faces, "obj": obj, "topo": topo,
         }
     engine.reset()
-    engine.tick_steps = settings.tick_steps
-    engine.tick_interval = settings.tick_interval
     return engine
 
 
@@ -579,8 +580,9 @@ class RD_OT_brush(bpy.types.Operator):
                         import bmesh as _bmesh
                         _bm = _bmesh.new()
                         _bm.from_mesh(obj.data)
-                        verts = np.array([[v.co.x, v.co.y, v.co.z] for v in _bm.verts],
-                                         dtype=np.float32)
+                        _raw = np.empty(len(_bm.verts) * 3, dtype=np.float32)
+                        _bm.verts.foreach_get("co", _raw)
+                        verts = _raw.reshape(-1, 3)
                         _bm.free()
                         self._face_centers = verts[faces].mean(axis=1)
                         bb = verts.max(axis=0) - verts.min(axis=0)
@@ -642,8 +644,25 @@ class RD_OT_brush(bpy.types.Operator):
         if engine.field_kind == "grid":
             f = engine.fields[chem_idx]
             h, w = f.shape
-            x = int(event.mouse_region_x / max(self._region.width, 1) * w)
-            y = int(event.mouse_region_y / max(self._region.height, 1) * h)
+            # 优先用 Image Editor 的 view2d 换算(正确处理缩放/平移;
+            # 原实现按区域线性映射,缩放视图后落笔位置错位)
+            x = y = None
+            v2d = getattr(self._region, "view2d", None)
+            if v2d is not None:
+                try:
+                    u, v = v2d.region_to_view(event.mouse_region_x,
+                                              event.mouse_region_y)
+                except Exception:
+                    u = v = None
+                if u is not None:
+                    if not (0.0 <= u <= 1.0 and 0.0 <= v <= 1.0):
+                        return False  # 落在图像外(缩小视图时的空白区)
+                    x = min(w - 1, max(0, int(u * w)))
+                    y = min(h - 1, max(0, int(v * h)))
+            if x is None:
+                # 兜底:无 view2d 时按区域满幅线性映射
+                x = int(event.mouse_region_x / max(self._region.width, 1) * w)
+                y = int(event.mouse_region_y / max(self._region.height, 1) * h)
             x0, x1 = max(0, x - radius), min(w, x + radius)
             y0, y1 = max(0, y - radius), min(h, y + radius)
             f[y0:y1, x0:x1] = value
@@ -943,6 +962,8 @@ class RD_OT_update_display(bpy.types.Operator):
         if wm is not None:
             for window in wm.windows:
                 for area in window.screen.areas:
+                    if area.type not in ("VIEW_3D", "IMAGE_EDITOR"):
+                        continue  # 其余区域无需随模拟重绘(全量 tag 开销浪费)
                     for region in area.regions:
                         region.tag_redraw()
 
@@ -991,7 +1012,9 @@ class RD_OT_mesh_prep(bpy.types.Operator):
         category = "/".join(category_parts) if category_parts else "空"
         _bmesh.ops.triangulate(_bm, faces=_bm.faces[:])
         _bm.faces.index_update()
-        verts = np.array([[v.co.x, v.co.y, v.co.z] for v in _bm.verts], dtype=np.float32)
+        _raw = np.empty(len(_bm.verts) * 3, dtype=np.float32)
+        _bm.verts.foreach_get("co", _raw)
+        verts = _raw.reshape(-1, 3)
         faces = np.array([[l.vert.index for l in f.loops] for f in _bm.faces], dtype=np.int32)
         _bm.free()
         s = context.scene.ready_settings
@@ -1282,8 +1305,14 @@ class RD_OT_apply_vertex_displacement(bpy.types.Operator):
                          dtype=np.int32)
         faces = np.array([[l.vert.index for l in f.loops] for f in _b.faces],
                          dtype=np.int32)
-        normals = np.array([v.normal for v in _b.verts], dtype=np.float32)
-        verts_co = np.array([v.co for v in _b.verts], dtype=np.float32)
+        # foreach_get 批量取坐标/法线(逐顶点 Python 循环在 10 万级顶点上秒级)
+        _b.normal_update()
+        _co = np.empty(n_verts * 3, dtype=np.float32)
+        _b.verts.foreach_get("co", _co)
+        verts_co = _co.reshape(-1, 3)
+        _nm = np.empty(n_verts * 3, dtype=np.float32)
+        _b.verts.foreach_get("normal", _nm)
+        normals = _nm.reshape(-1, 3)
         if n_verts < 100 or len(edges) == 0:
             _b.free()
             self.report({"WARNING"}, "顶点过少,建议先重网格化(目标面数 20k+)")
@@ -1298,6 +1327,13 @@ class RD_OT_apply_vertex_displacement(bpy.types.Operator):
         _bd = find_boundary_verts(n_verts, faces)
         U = np.ones(n_verts, dtype=np.float32)
         V = sparse_seeds(n_verts, s.vertex_seed_ratio, _bd, _rng)
+        # 稳定性防护:非归一化图拉普拉斯谱半径 ≤ 2·deg_max,显式欧拉要求
+        # dt·D·2·deg_max ≤ 1;超限自动子步(否则高度顶点局部失稳被 clip 成饱和块)
+        _deg_max = int(_deg.max()) if len(_deg) else 1
+        _dt = float(s.param_dt)
+        _Dmax = max(float(s.param_Du), float(s.param_Dv))
+        _n_sub = max(1, int(np.ceil(2.0 * _Dmax * _dt * _deg_max / 0.9)))
+        _dt_eff = _dt / _n_sub
         # 可选 Numba 加速(未安装自动回退 numpy,结果同源;读场景勾选框)
         _use_numba = bool(s.use_numba)
         _ran_numba = False
@@ -1309,25 +1345,26 @@ class RD_OT_apply_vertex_displacement(bpy.types.Operator):
             if NUMBA_AVAILABLE:
                 run_vertex_rd_numba(U, V, _v1, _v2, _deg, _bd,
                                     s.param_Du, s.param_Dv, s.param_F, s.param_k,
-                                    s.param_dt, s.bake_steps)
+                                    _dt_eff, s.bake_steps * _n_sub)
                 _ran_numba = True
         if not _ran_numba:
             for _ in range(s.bake_steps):
-                rd_step_vertex(U, V, _v1, _v2, _deg, _bd,
-                              s.param_Du, s.param_Dv, s.param_F, s.param_k,
-                              s.param_dt)
+                for _ in range(_n_sub):
+                    rd_step_vertex(U, V, _v1, _v2, _deg, _bd,
+                                  s.param_Du, s.param_Dv, s.param_F, s.param_k,
+                                  _dt_eff)
         # V 归一化 → 位移
         vmin, vmax = float(V.min()), float(V.max())
         norm_v = (V - vmin) / max(vmax - vmin, 1e-6)
         disp = s.mesh_displacement_strength
         new_co = verts_co + normals * (norm_v[:, None] * disp)
-        for i, v in enumerate(_b.verts):
-            v.co = new_co[i]
+        _b.verts.foreach_set("co", new_co.ravel())
         _b.to_mesh(obj.data)
         _b.free()
         elapsed = _time.time() - _t0
-        self.report({"INFO"}, f"顶点凹凸完成:{n_verts} 顶点,{elapsed:.1f}s "
-                              f"(Ctrl+Z 可回退)")
+        _sub_msg = f",稳定子步 ×{_n_sub}" if _n_sub > 1 else ""
+        self.report({"INFO"}, f"顶点凹凸完成:{n_verts} 顶点,{elapsed:.1f}s"
+                              f"{_sub_msg} (Ctrl+Z 可回退)")
         return {"FINISHED"}
 
 
@@ -1346,6 +1383,9 @@ class RD_OT_subdivide_copy(bpy.types.Operator):
             self.report({"ERROR"}, "请先选择目标网格对象")
             return {"CANCELLED"}
         s = context.scene.ready_settings
+        if context.mode != "OBJECT":
+            self.report({"ERROR"}, "请先切到物体模式")
+            return {"CANCELLED"}
         new_mesh = obj.data.copy()
         new_mesh.name = f"{obj.name}_rd_sub"
         new_obj = bpy.data.objects.new(f"{obj.name}_rd_sub", new_mesh)
@@ -1457,7 +1497,8 @@ class RD_OT_grow3d_pipeline(bpy.types.Operator):
                     domain_mask, bbox_min, bbox_size = voxelize_mesh(
                         _wv, _mf, s.grow3d_size)
             except Exception as ex:
-                wm.progress_end()
+                # 注意:进度条保持开启(修复原实现在此误调 progress_end,
+                # 后续 progress_update/end 落在未开启状态)
                 self.report({"ERROR"}, f"网格体素化失败: {ex}(将退回自由盒模式)")
                 domain_mask = None
 
@@ -1581,9 +1622,10 @@ class RD_OT_pattern_map_pick(bpy.types.Operator):
         if img is None:
             img = bpy.data.images.new("RD_PatternMap", width=w, height=h,
                                       alpha=False)
-        else:
+        elif (img.size[0], img.size[1]) != (w, h):
             img.scale(w, h)
-        img.pixels[:] = map_image_pixels(arr)
+        # foreach_set 批量写像素(切片赋值走 Python 列表,~25 万像素明显慢)
+        img.pixels.foreach_set(np.asarray(map_image_pixels(arr), dtype=np.float32))
         img.update()
         # 确保有 Image Editor 且显示地图
         self._prev_image = None
@@ -1801,9 +1843,10 @@ class RD_OT_paste_preset_json(bpy.types.Operator):
 
 
 class RD_OT_open_rdtool_web(bpy.types.Operator):
-    """在系统默认浏览器打开 RD 网页选参工具(web/rdtool.html,自包含离线页面)。
+    """在系统默认浏览器打开 RD 网页选参工具(web/rdtool-orig/,Karl Sims RD
+    Tool 直接移植版,离线自包含)。
 
-    网页内核与插件同口径(5 点拉普拉斯 + 同裁剪);选参后「导出 JSON」
+    拖动定位挑选图案 → 「导出 Blender 预设」生成 JSON
     → 回 Blender 用「导入 JSON 预设」调入。
     """
     bl_idname = "ready.open_rdtool_web"
@@ -1821,7 +1864,8 @@ class RD_OT_open_rdtool_web(bpy.types.Operator):
         if not path or not os.path.exists(path):
             self.report({"ERROR"}, "未找到 web/rdtool-orig/rdtool.html(插件目录不完整)")
             return {"CANCELLED"}
-        url = "file:///" + path.replace("\\", "/")
+        # path 以 / 开头,"file://" + path 即标准 file:/// 形式
+        url = "file://" + path.replace("\\", "/")
         try:
             bpy.ops.wm.url_open(url=url)
             self.report({"INFO"}, "已在浏览器打开 RD 网页工具;选参后导出 JSON 再导入")

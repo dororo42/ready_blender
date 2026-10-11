@@ -30,6 +30,7 @@ def test_all():
               "k": p.get("k"), "dt": p.get("timestep")}
     ok = all(v is not None for v in mapped.values())
     print(f"[{'PASS' if ok else 'FAIL'}] Gray-Scott pattern 参数映射完整: {mapped}")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
 
     # 2) 场提取(布局 B:单键多列 Scalars_)+ reshape:dims (w,h,1) → (h,w)
     w, h = r["dimensions"][0], r["dimensions"][1]
@@ -49,10 +50,12 @@ def test_all():
             a_flat, b_flat = pd[flat_keys[0]], pd[flat_keys[1]]
     ok = a_flat is not None
     print(f"[{'PASS' if ok else 'FAIL'}] 化学量提取(布局检测,键: {list(pd.keys())})")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
     a = np.asarray(a_flat, dtype=np.float32).reshape(h, w)
     b = np.asarray(b_flat, dtype=np.float32).reshape(h, w)
     ok = a.shape == (h, w) and a.size == w * h and np.isfinite(a).all()
     print(f"[{'PASS' if ok else 'FAIL'}] reshape ({w}x{h}) → {a.shape}, 无 NaN")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
 
     # 3) 初始场统计(GS pattern 双列布局数据)
     print(f"[INFO] grayscott_2D 场统计: a[min={a.min():.3f} max={a.max():.3f}] b[min={b.min():.3f} max={b.max():.3f}]")
@@ -65,10 +68,12 @@ def test_all():
     expect = r2["rd"].get("apply_when_loading") is True
     ok = is_gen == expect
     print(f"[{'PASS' if ok else 'FAIL'}] 全 0 场检测与 apply_when_loading 一致: all_zero={is_gen}, apply_when_loading={expect}")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
 
     # 5) 公式型 pattern:非 GS 系统参数不同步路径(rd.rule_type=formula)
     ok = r2["rd"].get("rule_type") == "formula"
     print(f"[{'PASS' if ok else 'FAIL'}] Brusselator 识别为 formula 型(参数不自动同步)")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
 
     # 5b) 公式型 Gray-Scott 标准参数:也应可同步(U-Skate 系列)
     r5 = read_file(os.path.join(PATTERNS, "Gray-Scott", "U-Skate", "Munafo_glider.vti"))
@@ -78,12 +83,14 @@ def test_all():
     is_gs = "Gray" in (r5["rd"].get("rule_name") or "")
     ok = r5["rd"].get("rule_type") == "formula" and is_gs and gs_std
     print(f"[{'PASS' if ok else 'FAIL'}] 公式型 GS(U-Skate)五参数齐全 → 参数同步条件满足: {p5}")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
 
     # 5c) 调制参数型(Lesmes_noisy 含 noise)→ 不同步
     r5c = read_file(os.path.join(PATTERNS, "Gray-Scott", "Lesmes_noisy.vti"))
     p5c = r5c["rd"]["parameters"]
     ok = "noise" in p5c and not (set(p5c.keys()) <= {"timestep", "D_a", "D_b", "F", "k"})
     print(f"[{'PASS' if ok else 'FAIL'}] 含 noise 调制参数 → 正确排除同步(键: {sorted(p5c.keys())})")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
 
     # 6) u/v 键名回退路径:自制 vti 用 u/v 命名
     import tempfile
@@ -98,19 +105,23 @@ def test_all():
             keys = list(r3["point_data"].keys())[:2]
         ok = keys == ["u", "v"]
         print(f"[{'PASS' if ok else 'FAIL'}] 非 a/b 键名回退到前两个化学量: {keys}")
+        assert ok, "pattern_import 检查未通过(详见上一行输出)"
         u2 = np.asarray(r3["point_data"][keys[0]]).reshape(16, 16)
         ok2 = np.allclose(u2, u, atol=1e-5)
         print(f"[{'PASS' if ok2 else 'FAIL'}] u/v 场数据 round-trip 一致")
+        assert ok2, "pattern_import 检查未通过(详见上一行输出)"
 
     # 7) 3D/网格型拒绝条件:dims Z 维 ≠ 1 → 拒绝
     r4 = read_file(os.path.join(PATTERNS, "CPU-only", "grayscott_3D.vti"))
     ok = r4["dimensions"][2] != 1
     print(f"[{'PASS' if ok else 'FAIL'}] 3D pattern(dims={r4['dimensions']})被 Z 维条件正确识别为不可导入")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
 
     # 7b) 1D 拒绝条件:Y 维 < 2 → 拒绝(grayscott_1D)
     r7 = read_file(os.path.join(PATTERNS, "CPU-only", "grayscott_1D.vti"))
     ok = r7["dimensions"][1] < 2
     print(f"[{'PASS' if ok else 'FAIL'}] 1D pattern(dims={r7['dimensions']})被 Y 维条件正确识别为不可导入")
+    assert ok, "pattern_import 检查未通过(详见上一行输出)"
 
     # 7c) GS 标准参数型去重统计(转预设候选)
     uniq = {}

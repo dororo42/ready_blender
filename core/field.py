@@ -85,11 +85,16 @@ def build_face_adjacency(faces: np.ndarray, kind: str = "vertex"):
 class MeshField:
     """非规则网格(三角面片)标量场,状态在面(cell)域。"""
 
-    def __init__(self, faces: np.ndarray, kind: str = "vertex", dtype=np.float32):
+    def __init__(self, faces: np.ndarray, kind: str = "vertex", dtype=np.float32,
+                 adjacency=None):
         self.faces = np.ascontiguousarray(faces, dtype=np.int32)
         self.kind = kind
         self.dtype = dtype
-        self.nbr_idx, self.nbr_w, self.max_k, self.avg_k = build_face_adjacency(self.faces, kind)
+        if adjacency is not None:
+            # 注入预计算邻接(调用方已构建时避免 O(F) 重建一遍)
+            self.nbr_idx, self.nbr_w, self.max_k, self.avg_k = adjacency
+        else:
+            self.nbr_idx, self.nbr_w, self.max_k, self.avg_k = build_face_adjacency(self.faces, kind)
         self.data = np.zeros(self.faces.shape[0], dtype=dtype)
 
     def copy(self):

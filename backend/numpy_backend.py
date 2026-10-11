@@ -77,18 +77,23 @@ class NumpyBackend:
                 else:
                     gray_scott_step_opt(a, b, Du, Dv, F, k, dt, wrap=wrap,
                                         lap_a=lap_a, lap_b=lap_b, abb=abb)
-            self.steps_done += n
+            self.steps_done += n_eff  # 计数含子步(实际推进的模拟步数)
             return fields
         if field_kind == "grid":
             wrap = params.get("wrap", False)
             dt = params["dt"]
             p = dict(params)
             p["wrap"] = wrap
-            for _ in range(n):
+            n_eff = n * int(params.get("_n_sub", 1))  # GS 经 scale_params 时与 fast 路径同口径
+            for _ in range(n_eff):
                 rule.update(fields, p, dt, field_kind="grid")
         else:
             dt = params["dt"]
-            for _ in range(n):
-                rule.update(fields, dict(params), dt, field_kind="mesh", nbr=nbr)
-        self.steps_done += n
+            # 直接传 params(不逐步拷贝):_mesh_ext 缓存挂在 params 上,
+            # 逐步 dict() 拷贝会让取向/流动缓存每步失效、每 tick 重算 O(N·K) 权重;
+            # 规则层只经 setdefault 写入缓存键,无其他回写。
+            n_eff = n * int(params.get("_n_sub", 1))  # 图案缩放子步对 mesh 路径同样生效
+            for _ in range(n_eff):
+                rule.update(fields, params, dt, field_kind="mesh", nbr=nbr)
+        self.steps_done += n_eff
         return fields

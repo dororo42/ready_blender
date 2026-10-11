@@ -87,7 +87,10 @@ def rhombille(nx: int, ny: int, scale: float = 1.0):
                 ang = np.pi / 6 + k * np.pi / 3
                 verts.append([cx + s * np.cos(ang), cy + s * np.sin(ang), 0.0])
                 ring.append(len(verts) - 1)
-            for k in range(6):
+            # 菱形单元被相邻两六角共享(6 边 × 1/2 = 3 个/六角):
+            # 只发 k∈{0,2,4},k+3 方向由邻居六角补全,避免焊接后成对重合面
+            # (此前每六角发 6 个 → 菱形全部翻倍,edge 邻接退化为孪生面互邻)。
+            for k in (0, 2, 4):
                 v1 = verts[ring[k]]
                 v2 = verts[ring[(k + 1) % 6]]
                 # 邻居中心 = 中心 + (v1−中心) + (v2−中心)

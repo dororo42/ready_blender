@@ -70,6 +70,7 @@ def test_all():
     print(f"规则类型: {rule_types}")
     for f, e in failures[:10]:
         print(f"  FAIL {f}: {e}")
+    assert not failures, f"{fail}/{len(files)} 个 pattern 解析失败: {failures[:3]}"
 
 
 

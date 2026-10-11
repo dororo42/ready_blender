@@ -81,9 +81,12 @@ def test_flow_genuinely_alters_field():
 def test_both_combined_finite():
     be = NumpyBackend()
     p = dict(Du=0.16, Dv=0.08, F=0.0545, k=0.062, dt=1.0, wrap=True)
+    # flow_strength 取 0.15:速度场修复(去掉半对角归一化,∥v∥≈strength 格/步)后,
+    # 0.5 的强涡旋会在图灵不稳定性建立前把中心种子剪切稀释到灭绝(真实物理行为,
+    # 见 code-review-report-v1.7 §Flow);0.15 时图案存活且确定被平流改写
     x = _fresh()
     be.step(GrayScottRule(), x, dict(p, orientation_kind="radial", orientation_strength=0.3,
-            flow_kind="vortex", flow_strength=0.5), n=800, field_kind="grid")
+            flow_kind="vortex", flow_strength=0.15), n=800, field_kind="grid")
     assert np.isfinite(x[0]).all() and np.isfinite(x[1]).all()
     assert float(x[1].std()) > 0.05
 

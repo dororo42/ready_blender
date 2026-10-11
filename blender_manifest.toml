@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "ready_blender"
-version = "0.1.1"
+version = "0.1.2"
 name = "Ready: Reaction-Diffusion"
 tagline = "Reaction-diffusion simulation on meshes and grids (Gray-Scott)"
 maintainer = "dororo42"
@@ -18,4 +18,7 @@ paths_exclude_pattern = [
     "tests/",
     "tools/",
     ".github/",
+    "docs/",
+    "web/_orig/",
+    "web/_orig_rdtool.html",
 ]

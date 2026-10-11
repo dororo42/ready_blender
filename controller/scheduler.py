@@ -50,9 +50,11 @@ class PreviewScheduler:
                         engine.display_hook()
                     except Exception:
                         pass
-        except Exception:
-            # 异常自愈:停止 timer 并暂停,避免卡死 RUNNING 状态(症状:再点运行无反应)
+        except Exception as e:
+            # 异常自愈:停止 timer 并暂停,避免卡死 RUNNING 状态(症状:再点运行无反应);
+            # 留痕到 last_error 供面板展示(纯静默会变成"无声停止",用户无从排查)
             self._registered = False
+            engine.last_error = f"预览异常已自动暂停: {type(e).__name__}: {e}"
             engine.pause()
             return None
         return engine.tick_interval  # 下次间隔

@@ -56,7 +56,8 @@ def test_all():
     v, f = hexagonal(4, 4)
     check("hexagonal: 顶点/面数为正且三角形", len(v) > 0 and len(f) == 4 * 4 * 6)
     v, f = rhombille(4, 4)
-    check("rhombille: 4x4x12 = 192 三角形(每 cell 6 菱形)", len(f) == 4 * 4 * 12)
+    # v1.7 修复后每六角只发 3 个菱形(原 6 个产生成对重合面):4x4x3 菱形 ×2 三角
+    check("rhombille: 4x4x6 = 96 三角形(每 cell 3 菱形,无重合面)", len(f) == 4 * 4 * 6)
     v, f = geodesic_sphere(2)
     check("geodesic: 细分 2 后 320 面(二十面体)", len(f) == 20 * 4 ** 2)
     v, f = torus(24, 12)
@@ -80,6 +81,8 @@ def test_all():
     check("切片形状正确", sl.shape == (16, 16))
 
     print(f"\n{ok} passed, {fail} failed")
+    assert fail == 0, f"{fail} checks failed"  # pytest 下失败必须红(此前只打印不断言)
+
 
 
 

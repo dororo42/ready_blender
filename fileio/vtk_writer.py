@@ -21,10 +21,18 @@ def write_vti(filepath, fields, dims, rd_meta=None):
     """写出 .vti(ImageData,ASCII)。fields: {chem_name: (nx,ny[,nz]) array}。
 
     兼容 Ready 读取:含 <RD> 扩展段(rule type/name + parameters)。
+    数组尺寸与 dims 不符时抛 ValueError(此前静默写出非法文件)。
     """
-    nx, ny = dims
-    nz = 1
-    dims3 = (nx, ny, nz)
+    if len(dims) == 3:
+        nx, ny, nz = (int(d) for d in dims)
+    else:
+        nx, ny = (int(d) for d in dims)
+        nz = 1
+    for name, arr in fields.items():
+        size = int(np.asarray(arr).size)
+        if size != nx * ny * nz:
+            raise ValueError(
+                f"fields[{name}] 尺寸 {size} ≠ nx·ny·nz={nx * ny * nz}")
     root = ET.Element("VTKFile", {
         "type": "ImageData", "version": "0.1",
         "byte_order": "LittleEndian",
@@ -79,8 +87,10 @@ def write_vtu(filepath, points, faces, cell_data=None, rd_meta=None):
             p = ET.SubElement(rule, "param", {"name": name})
             p.text = str(val)
         if rd_meta.get("formula"):
+            # 化学量计数优先取 rd_meta 显式声明(cell_data 可能混入非化学数组)
+            n_chem = rd_meta.get("n_chemicals", len(cell_data or {}))
             f = ET.SubElement(rule, "formula", {
-                "number_of_chemicals": str(len(cell_data or {}))})
+                "number_of_chemicals": str(n_chem)})
             f.text = rd_meta["formula"]
     ug = ET.SubElement(root, "UnstructuredGrid")
     piece = ET.SubElement(ug, "Piece", {

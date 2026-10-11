@@ -37,10 +37,13 @@ def test_all():
 
     same = np.allclose(U1, U2, atol=1e-6) and np.allclose(V1, V2, atol=1e-6)
     print(f"[{'PASS' if same else 'FAIL'}] numpy 路径与 numba_backend 50 步数值一致 (max|dU|={np.abs(U1-U2).max():.2e}, max|dV|={np.abs(V1-V2).max():.2e})")
+    assert same, "numpy 与 numba_backend 数值不一致"
     bd_ok = (U2[bd] > 0.999).all() and (V2[bd] < 1e-6).all()
     print(f"[{'PASS' if bd_ok else 'FAIL'}] numba_backend 边界 Dirichlet 保持")
+    assert bd_ok, "numba_backend 边界 Dirichlet 未保持"
     finite = np.isfinite(U2).all() and np.isfinite(V2).all()
     print(f"[{'PASS' if finite else 'FAIL'}] numba_backend 无 NaN")
+    assert finite, "numba_backend 出现 NaN"
 
 
 

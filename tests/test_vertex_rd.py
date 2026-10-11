@@ -61,6 +61,8 @@ def test_all():
                                         np.zeros((0, 3), np.int32))[2].size == 0)
 
     print(f"\n{ok} passed, {fail} failed")
+    assert fail == 0, f"{fail} checks failed"  # pytest 下失败必须红(此前只打印不断言)
+
 
 
 

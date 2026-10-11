@@ -12,7 +12,7 @@ def test_all():
     assert abs(float(_bias(np.array([0.0]))[0]) - 1.0) < 1e-12
     assert float(_bias(np.array([1000.0]))[0]) == 1000.0      # 大正无溢出
     assert float(_bias(np.array([-1000.0]))[0]) == 0.0        # 大负无溢出
-    assert np.isnan(_bias(np.array([0.0, 1e3, -1e3]))).any() == False
+    assert not np.isnan(_bias(np.array([0.0, 1e3, -1e3]))).any()
     b1 = float(_bias(np.array([1.0]))[0])
     bm1 = float(_bias(np.array([-1.0]))[0])
     assert abs(b1 - 0.5819767 - 1.0) < 1e-6 and abs(bm1 - 0.5819767) < 1e-6  # 解析值

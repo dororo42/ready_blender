@@ -24,7 +24,29 @@ def _L(zh, en):
     return zh if _lang_is_zh() else en
 
 
-import bpy
+# draw() 每次重绘都会执行,对大网格逐面 Python 求和会造成 UI 卡顿;
+# 估算结果按 (对象名, 顶点数, 面数) 缓存,拓扑变更自动失效
+_face_est_cache = {}
+
+
+def _face_estimate(obj, levels):
+    """(三角面数, 细分后预估) 带缓存。"""
+    mesh = obj.data
+    key = (obj.name, len(mesh.vertices), len(mesh.polygons))
+    cur = _face_est_cache.get(key)
+    if cur is None:
+        cur = sum(max(len(p.vertices) - 2, 1) for p in mesh.polygons)
+        _face_est_cache[key] = cur
+    return cur, cur * (4 ** levels)
+
+
+def _surface_area_cached(obj):
+    """表面积(世界变换前局部空间)带缓存。"""
+    mesh = obj.data
+    key = (obj.name, len(mesh.vertices), len(mesh.polygons))
+    if key not in _face_est_cache:
+        _face_est_cache[key] = sum(poly.area for poly in mesh.polygons)
+    return _face_est_cache[key]
 
 
 class RD_PT_main(bpy.types.Panel):
@@ -141,9 +163,8 @@ class RD_PT_main(bpy.types.Panel):
             row2.prop(settings, "use_subdivide", text=_L("细分网格", "Subdivide"))
             row2.prop(settings, "subdivide_levels", text=_L("级别", "Levels"))
             if settings.target_object is not None:
-                _mesh = settings.target_object.data
-                _cur_tri = sum(max(len(p.vertices) - 2, 1) for p in _mesh.polygons)
-                _est = _cur_tri * (4 ** settings.subdivide_levels)
+                _cur_tri, _est = _face_estimate(settings.target_object,
+                                                settings.subdivide_levels)
                 box.label(text=_L(f"当前面数 {_cur_tri} → 预估细分后 {_est}", f"Faces {_cur_tri} → est. after subdiv {_est}"))
                 if settings.use_subdivide:
                     box.operator("ready.subdivide_copy", text=_L("生成细分副本", "Subdivide Copy"), icon="MOD_SUBSURF")
@@ -152,7 +173,7 @@ class RD_PT_main(bpy.types.Panel):
             row3.prop(settings, "use_remesh", text=_L("Remesh 网格", "Remesh Mesh"))
             row3.prop(settings, "remesh_target_faces", text=_L("目标面数", "Target Faces"))
             if settings.target_object is not None and settings.use_remesh:
-                _area = sum(poly.area for poly in settings.target_object.data.polygons)
+                _area = _surface_area_cached(settings.target_object)
                 _vox = (_area / max(settings.remesh_target_faces, 1)) ** 0.5 * 1.2
                 box.label(text=_L(f"预估 voxel 尺寸 {_vox:.4f}", f"Est. voxel size {_vox:.4f}"))
                 box.operator("ready.remesh_copy", text=_L("生成 Remesh 副本", "Remesh Copy"), icon="MOD_REMESH")
@@ -167,7 +188,10 @@ class RD_PT_main(bpy.types.Panel):
                     box.label(text=msg[:60], icon="ERROR")
                     if len(msg) > 60:
                         box.label(text=msg[60:])
-                    box.operator("object.voxel_remesh", text=_L("一键 Voxel Remesh", "Voxel Remesh"))
+                    box.operator("ready.remesh_copy", text=_L("一键 Voxel Remesh", "Voxel Remesh"))
+                    # 注:用 ready.remesh_copy(作用于①区目标对象,非破坏副本);
+                    # 原 object.voxel_remesh 作用于"活动物体"——活动物体不是
+                    # 目标网格时会把无关对象直接重网格化(不可逆)
             if settings.mesh_report_text:
                 box.separator()
                 sub = box.box()

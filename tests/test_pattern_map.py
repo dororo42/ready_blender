@@ -43,7 +43,7 @@ def test_determinism():
     assert np.array_equal(a, b)
 
 
-def test_cache_roundtrip(tmpdir=None):
+def test_cache_roundtrip(cache_dir=None):
     import numpy as np
     d = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".pm_cache_test")
     os.makedirs(d, exist_ok=True)

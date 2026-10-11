@@ -46,6 +46,8 @@ def test_all():
             check(f"{sid}: 运行不抛异常({e})", False)
 
     print(f"\n{ok} passed, {fail} failed")
+    assert fail == 0, f"{fail} checks failed"  # pytest 下失败必须红(此前只打印不断言)
+
 
 
 

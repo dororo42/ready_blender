@@ -13,3 +13,7 @@ _scratch_check.py
 
 # 运行时数据(开发检出自带)
 presets/user_presets.json
+
+# 本地打包产物(blender --command extension build)
+dist/
+*.zip

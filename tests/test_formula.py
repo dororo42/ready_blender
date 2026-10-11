@@ -88,6 +88,8 @@ def test_all():
     check("mesh 字段公式更新无 NaN", np.isfinite(am).all() and np.isfinite(bm).all())
 
     print(f"\n{ok} passed, {fail} failed")
+    assert fail == 0, f"{fail} checks failed"  # pytest 下失败必须红(此前只打印不断言)
+
 
 
 

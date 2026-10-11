@@ -86,7 +86,10 @@ def marching_cubes_naive(field3d, level=0.5):
             if outside:
                 faces.append([corners[quad[0]], corners[quad[1]], corners[quad[2]]])
                 faces.append([corners[quad[0]], corners[quad[2]], corners[quad[3]]])
-    return np.array(verts, dtype=np.float32), np.array(faces, dtype=np.int32)
+    # 空场/全阈值外时返回 (0,3) 形状(与 surface_nets_smooth 守卫口径一致,
+    # 避免下游 faces[:,0] 类索引崩在一维空数组上)
+    return (np.array(verts, dtype=np.float32).reshape(-1, 3),
+            np.array(faces, dtype=np.int32).reshape(-1, 3))
 
 
 def surface_nets_smooth(field3d, level=0.5, smooth_iterations=1):

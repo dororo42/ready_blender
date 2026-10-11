@@ -64,6 +64,8 @@ def test_all():
     check("空网格 verdict=empty 不崩溃", r4["verdict"] == "empty")
 
     print(f"\n{ok} passed, {fail} failed")
+    assert fail == 0, f"{fail} checks failed"  # pytest 下失败必须红(此前只打印不断言)
+
 
 
 

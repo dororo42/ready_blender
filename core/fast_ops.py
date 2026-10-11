@@ -42,7 +42,8 @@ def gray_scott_step_opt(a, b, Du, Dv, F, k, dt, wrap=False,
     if abb is None:
         abb = np.empty_like(a)
     for buf, src in ((lap_a, a), (lap_b, b), (abb, a), (abb, b)):
-        if buf is src:
+        # np.shares_memory 能发现视图/切片共享(仅 is 检查会漏掉同内存不同对象)
+        if buf is src or np.shares_memory(buf, src):
             raise ValueError("gray_scott_step_opt 缓冲区不得与输入数组共享内存")
     laplacian_5_fast(a, wrap, out=lap_a)
     laplacian_5_fast(b, wrap, out=lap_b)

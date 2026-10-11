@@ -53,7 +53,9 @@ class GrayScottRule(Rule):
         if o_kind and o_kind != "none" and o_str > 0:
             key = ("o", id(centers), o_kind, round(o_str, 3), id(nbr[0]))
             hit = cache.get("o")
-            if hit and hit[0] == key:
+            # 第 3 元素存 centers 引用做同一性校验:id 地址可能被 GC 复用,
+            # 同地址不同数组(几何已变)必须视为未命中
+            if hit and hit[0] == key and hit[2] is centers:
                 w = hit[1]
             else:
                 try:
@@ -64,11 +66,11 @@ class GrayScottRule(Rule):
                 except Exception as e:
                     print(f"[ready_blender] orientation skipped: {e}")
                     w = None
-                cache["o"] = (key, w)
+                cache["o"] = (key, w, centers)
         if f_kind and f_kind != "none" and f_str > 0:
             key = ("f", id(centers), f_kind, round(f_str, 4), id(nbr[0]))
             hit = cache.get("f")
-            if hit and hit[0] == key:
+            if hit and hit[0] == key and hit[2] is centers:
                 vel = hit[1]
             else:
                 try:
@@ -77,7 +79,7 @@ class GrayScottRule(Rule):
                 except Exception as e:
                     print(f"[ready_blender] flow skipped: {e}")
                     vel = None
-                cache["f"] = (key, vel)
+                cache["f"] = (key, vel, centers)
         return w, vel
 
     def update(self, fields, params, dt, field_kind="grid", nbr=None):
@@ -130,7 +132,9 @@ class GrayScottRule(Rule):
             if f_kind and f_kind != "none" and f_str:
                 try:
                     vx, vy = _ff.velocity_field(a.shape, f_kind, f_str)
-                except Exception:
+                except Exception as e:
+                    # 与 mesh 分支同口径留痕(静默吞错会误导远程排障)
+                    print(f"[ready_blender] flow (grid) skipped: {e}")
                     vx = vy = None
                 if vx is not None and vy is not None:
                     wrap = params.get("wrap", False)

@@ -14,7 +14,7 @@ def build_face_adjacency_bmesh(obj, kind="vertex"):
       faces: (F,3) int32 数组(三角化后)
       nbr_idx: (F,K) int32 稠密 K 列平铺
       nbr_w: (F,K) float32 权重(1/度归一化)
-      max_k, avg_k
+      max_k, avg_k, n_verts
     """
     import bpy
     mesh = obj.data if hasattr(obj, "data") else obj
@@ -47,7 +47,8 @@ def mesh_to_field(obj, values=None, kind="vertex"):
     except ImportError:
         from core.field import MeshField
     faces, nbr_idx, nbr_w, max_k, avg_k, n_verts = build_face_adjacency_bmesh(obj, kind)
-    mf = MeshField(faces, kind)
+    # 注入预计算邻接:MeshField 默认会再构建一遍(大网格初始化时间 ×2)
+    mf = MeshField(faces, kind, adjacency=(nbr_idx, nbr_w, max_k, avg_k))
     mf.nbr_idx = nbr_idx
     mf.nbr_w = nbr_w
     mf.max_k = max_k
@@ -76,9 +77,14 @@ def write_vertex_color(obj, face_values, color_layer_name="RD_value", vmin=None,
         vmax = float(vals.max())
     rng = max(vmax - vmin, 1e-9)
     norm = np.clip((vals - vmin) / rng, 0, 1)
-    for v in mesh.vertices:
-        c = norm[v.index]
-        layer.data[v.index].color = (c, c * 0.6, 1.0 - c, 1.0)
+    # foreach_set 批量写(逐顶点 .color 赋值是 RD 预览的主要 CPU 瓶颈之一)
+    rgba = np.empty((len(norm), 4), dtype=np.float32)
+    rgba[:, 0] = norm
+    rgba[:, 1] = norm * 0.6
+    rgba[:, 2] = 1.0 - norm
+    rgba[:, 3] = 1.0
+    n = min(len(layer.data), len(rgba))
+    layer.data.foreach_set("color", rgba[:n].ravel())
     return vals
 
 
@@ -90,34 +96,23 @@ def write_named_attribute(obj, face_values, attr_name="RD_value", domain="FACE")
       必须把三角化子面映射回原始多边形(按中心点所属),不能直接按索引截断。
     - 属性已存在时复用,不删除重建(避免破坏 GN 引用与每 tick 属性重建开销)。
     - POINT 域:面积加权平均直接写入,不再建临时顶点色层。
+    - 拓扑映射经 _tri_topo 缓存 + numpy 散射(原 bmesh+双层 Python 循环每帧重建)。
     """
     import bpy
-    import bmesh
     mesh = obj.data
     if domain == "FACE":
-        # 三角化面 → 原始多边形映射
-        # 审查修复:三角化后新面的 face.index ≠ 原始多边形索引,
-        # 必须用 bmesh.ops.triangulate 返回的 face_map(新面→原面)做映射。
-        bm = bmesh.new()
-        bm.from_mesh(mesh)
-        ret = bmesh.ops.triangulate(bm, faces=bm.faces[:])
-        bm.faces.index_update()  # B5 修复:拓扑修改后重算索引
-        face_map = ret.get("face_map", {})
+        loops_v, tri2poly, n_verts = _tri_topo(obj)
         # NaN/inf 防护(与 _face_to_vertex_values 同口径):坏数据不再进入属性
-        tri_values = np.nan_to_num(np.asarray(face_values, dtype=np.float32),
+        tri_values = np.nan_to_num(np.asarray(face_values, dtype=np.float64),
                                    nan=0.0, posinf=1e30, neginf=-1e30)
         n_polys = len(mesh.polygons)
+        t = min(len(tri_values), len(tri2poly))
         accum = np.zeros(n_polys, dtype=np.float64)
         counts = np.zeros(n_polys, dtype=np.int32)
-        for fi, tri_face in enumerate(bm.faces):
-            orig_face = face_map.get(tri_face, tri_face)
-            pi = orig_face.index
-            if fi < len(tri_values) and 0 <= pi < n_polys:
-                accum[pi] += tri_values[fi]
-                counts[pi] += 1
+        np.add.at(accum, tri2poly[:t], tri_values[:t])
+        np.add.at(counts, tri2poly[:t], 1)
         vals = np.zeros(n_polys, dtype=np.float32)
         np.divide(accum, np.maximum(counts, 1), out=vals)
-        bm.free()
     elif domain == "POINT":
         vals = _face_to_vertex_values(obj, face_values)
     else:
@@ -126,9 +121,62 @@ def write_named_attribute(obj, face_values, attr_name="RD_value", domain="FACE")
     if attr_name not in mesh.attributes:
         mesh.attributes.new(name=attr_name, type="FLOAT", domain=domain)
     attr = mesh.attributes[attr_name]
-    for i in range(min(len(attr.data), len(vals))):
-        attr.data[i].value = float(vals[i])
+    n = min(len(attr.data), len(vals))
+    attr.data.foreach_set("value", vals[:n].astype(np.float32))
     return attr
+
+
+# 拓扑快照缓存(纯拓扑量与场数据无关,按 (mesh 名, 顶点数, 多边形数) 失效;
+# 面积不缓存——由顶点坐标现算,顶点移动(雕塑)后权重自动跟随)
+_topo_snap_cache = {}
+
+
+def _tri_topo(obj):
+    """三角化拓扑快照(带缓存):返回 (loops_v (T,3) int32, tri2poly (T,) int32, n_verts)。
+
+    tri2poly 把三角化子面映射回原始多边形索引。注意:必须在 bmesh.faces.index_update()
+    之前取 face_map 的原面索引——index_update 会按三角化后的顺序重编所有活面索引,
+    混合多边形网格(含四边/n-gon)下原 index 会被覆盖,导致映射错位。
+    """
+    import bmesh
+    mesh = obj.data
+    key = (mesh.name, len(mesh.vertices), len(mesh.polygons))
+    hit = _topo_snap_cache.get(key)
+    if hit is not None:
+        return hit
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.index_update()
+    ret = bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    face_map = ret.get("face_map", {})
+    tri2poly = np.empty(len(bm.faces), dtype=np.int32)
+    loops = []
+    for fi, f in enumerate(bm.faces):
+        orig = face_map.get(f)
+        tri2poly[fi] = orig.index if orig is not None else f.index
+        for loop in f.loops:
+            loops.append(loop.vert.index)
+    n_verts = len(bm.verts)
+    bm.free()
+    snap = (np.array(loops, dtype=np.int32).reshape(-1, 3), tri2poly, n_verts)
+    _topo_snap_cache[key] = snap
+    return snap
+
+
+def clear_topo_cache():
+    """清空拓扑快照缓存(unregister / 网格对象删除时调用)。"""
+    _topo_snap_cache.clear()
+
+
+def _tri_areas(mesh, loops_v):
+    """三角面积(由顶点坐标现算,不建 bmesh;顶点移动后自动更新)。"""
+    co = np.empty(len(mesh.vertices) * 3, dtype=np.float32)
+    mesh.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    v0 = co[loops_v[:, 0]]
+    v1 = co[loops_v[:, 1]]
+    v2 = co[loops_v[:, 2]]
+    return 0.5 * np.linalg.norm(np.cross(v1 - v0, v2 - v0), axis=1).astype(np.float64)
 
 
 def _face_to_vertex_values(obj, face_values):
@@ -138,29 +186,20 @@ def _face_to_vertex_values(obj, face_values):
     防止 NaN 写入顶点色(视口全黑)或 RD_disp(GN 位移把顶点推到无穷远,
     物体消失)。
     """
-    import bmesh
+    mesh = obj.data
+    loops_v, _tri2poly, n_verts = _tri_topo(obj)
     face_values = np.nan_to_num(np.asarray(face_values, dtype=np.float64),
                                 nan=0.0, posinf=1e30, neginf=-1e30)
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
-    bmesh.ops.triangulate(bm, faces=bm.faces[:])
-    face_areas = np.array([f.calc_area() for f in bm.faces], dtype=np.float64)
-    vert_accum = {}
-    for i, face in enumerate(bm.faces):
-        if i >= len(face_values):
-            break
-        for loop in face.loops:
-            v = loop.vert.index
-            if v not in vert_accum:
-                vert_accum[v] = [0.0, 0.0]
-            vert_accum[v][0] += float(face_values[i]) * float(face_areas[i])
-            vert_accum[v][1] += float(face_areas[i])
-    n_verts = len(bm.verts)
-    vals = np.zeros(n_verts, dtype=np.float32)
-    for v, (ws, w) in vert_accum.items():
-        vals[v] = ws / max(w, 1e-9)
-    bm.free()
-    return vals
+    t = min(len(face_values), loops_v.shape[0])
+    tri_areas = _tri_areas(mesh, loops_v[:t])
+    w = face_values[:t] * tri_areas                       # (T,) 值×面积
+    flat_v = loops_v[:t].reshape(-1)                      # 3T 顶点索引
+    vert_vals = np.zeros(n_verts, dtype=np.float64)
+    vert_ws = np.zeros(n_verts, dtype=np.float64)
+    np.add.at(vert_vals, flat_v, np.repeat(w, 3))
+    np.add.at(vert_ws, flat_v, np.repeat(tri_areas, 3))
+    vals = vert_vals / np.maximum(vert_ws, 1e-9)
+    return vals.astype(np.float32)
 
 
 def write_displacement(obj, face_values, attr_name="RD_disp", strength=0.1):
@@ -179,8 +218,8 @@ def write_displacement(obj, face_values, attr_name="RD_disp", strength=0.1):
         attr = mesh.attributes.new(name=attr_name, type="FLOAT", domain="POINT")
     # N7/F9 修复:固定值域归一化(避免每帧 min/max 漂移)
     fixed = np.clip(vals, 0.0, 0.5) / 0.5
-    for i in range(min(len(attr.data), len(fixed))):
-        attr.data[i].value = float(fixed[i] * strength)
+    n = min(len(attr.data), len(fixed))
+    attr.data.foreach_set("value", (fixed[:n] * strength).astype(np.float32))
     return fixed * strength
 
 

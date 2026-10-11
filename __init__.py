@@ -16,7 +16,7 @@ import sys as _sys
 bl_info = {
     "name": "Ready: Reaction-Diffusion",
     "author": "Ready Blender Port Team",
-    "version": (0, 1, 1),
+    "version": (0, 1, 2),
     "blender": (4, 2, 0),
     "location": "3D Viewport > Sidebar > Ready",
     "description": "Reaction-diffusion simulation on meshes and grids (Gray-Scott).",
@@ -50,7 +50,8 @@ def _self_check():
     if not __package__:
         return  # 顶层模式无相对导入,跳过
     for sub in ("core.rule", "core.vertex_rd", "presets.presets",
-                "backend.numba_backend", "adapters.mesh_adapter",
+                "presets.pattern_map", "backend.numba_backend",
+                "adapters.mesh_adapter", "adapters.uv_bake_blender",
                 "controller.engine", "fileio.vtk_xml"):
         try:
             _importlib.import_module("." + sub, __package__)
@@ -138,10 +139,11 @@ def unregister():
         ui_props._restore_area()
     except Exception:
         pass
-    # F13:清空密度检测缓存
+    # F13:清空密度检测缓存与拓扑快照缓存
     try:
-        from adapters.mesh_adapter import clear_density_cache
+        from adapters.mesh_adapter import clear_density_cache, clear_topo_cache
         clear_density_cache()
+        clear_topo_cache()
     except Exception:
         pass
 

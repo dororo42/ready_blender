@@ -5,29 +5,42 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   numpy-tests:
     name: 单元测试(numpy,无 Blender)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - name: 安装依赖
-        run: pip install numpy pytest
+          python-version: "3.11"  # 与插件目标运行时(Blender 4.2)一致
+          cache: pip
+      - name: 安装依赖(版本钉扎见 tests/constraints.txt)
+        run: pip install -c tests/constraints.txt numpy pytest
       - name: 运行全量测试
         run: pytest tests -q
 
   blender-core-smoke:
-    name: Blender 核心冒烟(bpy 4.5 无头)
+    name: Blender 核心冒烟(bpy ${{ matrix.bpy-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # manifest 声明最低支持 4.2,冒烟需同时覆盖 4.2 与 4.5
+        bpy-version: ["4.2.*", "4.5.*"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"  # bpy 4.5 wheel 绑定 CPython 3.11
-      - name: 安装 bpy
-        run: pip install bpy==4.5.* numpy pytest
+          python-version: "3.11"  # bpy 4.2/4.5 wheel 均绑定 CPython 3.11
+          cache: pip
+      - name: 安装 bpy(版本钉扎见 tests/constraints.txt)
+        run: pip install -c tests/constraints.txt "bpy==${{ matrix.bpy-version }}" numpy pytest
       - name: 无头冒烟(插件导入 + Gray-Scott 面域仿真)
         run: python tests/ci_bpy_smoke.py

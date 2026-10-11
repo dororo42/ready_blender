@@ -90,7 +90,9 @@ def import_preset_dict(d):
             raise ValueError(f"params.{key} 非有限数")
         p[key] = v
     if "wrap" in p:
-        p["wrap"] = bool(p["wrap"])
+        # 仅接受真布尔:字符串 "false"/数字经 bool() 会静默翻转语义
+        if not isinstance(p["wrap"], bool):
+            raise ValueError("params.wrap 必须是布尔值")
     for key in ("Du", "Dv"):
         if not (0.0 <= p[key] <= 2.0):
             raise ValueError(f"params.{key} 超出范围 [0,2]")
@@ -125,7 +127,17 @@ def load_user_presets(user_file=None):
             with open(path, encoding="utf-8-sig") as f:
                 data = json.load(f)
             if isinstance(data, list):
-                return [d for d in data if isinstance(d, dict) and d.get("params")]
+                # 逐项过 import_preset_dict 校验(与导入路径同口径):
+                # 手工编辑/跨版本残留的损坏项(字符串数值/NaN)不再直通 UI 崩溃
+                out = []
+                for d in data:
+                    if not isinstance(d, dict) or not d.get("params"):
+                        continue
+                    try:
+                        out.append(import_preset_dict(d))
+                    except (ValueError, TypeError, KeyError):
+                        continue
+                return out
         except Exception:
             continue
     return []

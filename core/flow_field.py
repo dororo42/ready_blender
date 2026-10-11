@@ -62,14 +62,12 @@ def velocity_field(shape, kind="none", strength=0.0, center=None):
         vy = strength * env * (dx / safe_rad)
     elif kind == "vortex":
         u_rad = rad / half_diag
-        env = 1.0 - u_rad                       # 中心强,向外弱
+        env = np.maximum(1.0 - u_rad, 0.0)      # 中心强,向外弱;非负防 center 偏心时反向
         vx = -strength * env * (dy / safe_rad)
         vy = strength * env * (dx / safe_rad)
     else:
         raise ValueError(kind)
 
-    # 每个速度分量按半对角归一化,保证 ∥v∥max ≈ strength(格/单位时间)
-    if half_diag > 0:
-        vx = (vx / half_diag).astype(np.float32)
-        vy = (vy / half_diag).astype(np.float32)
-    return vx, vy
+    # 速度语义:各类型方向向量模长 ≤ 1(swirl 随 u_rad 略低),故 ∥v∥max ≈ strength
+    # (格/单位时间);应用侧须 ∥v∥·dt < 1 格保双线性插值稳定(见模块 docstring)。
+    return vx.astype(np.float32), vy.astype(np.float32)

@@ -7,11 +7,21 @@
 - 移除 Google Analytics 远程脚本(离线自包含);
 - 新增:导出 JSON/CSV(Blender 导入链 schema)+ 版权声明(MIT 保留)。
 """
+import argparse
 import base64
 import os
+import sys
 
-SRC = r"C:\Users\Administrator\.openclaw-autoclaw\workspace\.cluster\linusmossberg-rd-analysis\reaction-diffusion-master"
-OUT_DIR = r"C:\Users\Administrator\.openclaw-autoclaw\workspace\ready_blender\web"
+_parser = argparse.ArgumentParser(description="组装 linusmossberg RD 本地化单文件 HTML")
+_parser.add_argument("--src", required=True,
+                     help="linusmossberg reaction-diffusion-master 源目录(第三方,不入库)")
+_parser.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "web"),
+                     help="输出目录(默认 <repo>/web)")
+_args = _parser.parse_args()
+SRC = _args.src
+OUT_DIR = _args.out
+if not os.path.isdir(SRC):
+    sys.exit(f"源目录不存在: {SRC}(--src 指向 reaction-diffusion-master)")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
@@ -89,11 +99,13 @@ html = f"""<!DOCTYPE html>
         name: 'linusmossberg · ' + gui.preset,
         rule: 'Gray-Scott',
         params: {{
-          Du: +(0.256 * Settings.diffusion_scale).toFixed(5),
-          Dv: +(0.128 * Settings.diffusion_scale).toFixed(5),
+          // 网页有效扩散恒为 Du=0.25/Dv=0.125(dt = 1/(4*DS) 只改播放速度);
+          // dt 钳 0.8 保证 Du*dt ≤ 0.2(Blender 端稳定域),DS 过小时仅播放变慢
+          Du: 0.25,
+          Dv: 0.125,
           F: +Settings.feed.toFixed(5),
           k: +Settings.kill.toFixed(5),
-          dt: 1.0,
+          dt: +Math.min(1 / (4 * Settings.diffusion_scale), 0.8).toFixed(4),
           wrap: false
         }},
         seed_region: 'uniform_sparse',
@@ -108,7 +120,13 @@ html = f"""<!DOCTYPE html>
             kill_variation: Settings.kill_variation,
             diffusion_scale_variation: Settings.diffusion_scale_variation
           }},
-          orientation: {{ anisotropy: Settings.anisotropy }},
+          orientation: (function() {{
+            // a1 ∈ [0,1] → Blender 消费端 schema(kind/strength);已发布版同款
+            var a = Settings.anisotropy;
+            if (Math.abs(a - 0.5) < 0.01) return {{ kind: 'none', strength: 0 }};
+            if (a > 0.5) return {{ kind: 'linear', strength: Math.min(0.95, 2 * (a - 0.5)) }};
+            return {{ kind: 'horizontal', strength: Math.min(0.95, 2 * (0.5 - a)) }};
+          }})(),
           flow: null
         }}
       }};
@@ -125,11 +143,11 @@ html = f"""<!DOCTYPE html>
       var rows = [
         ['parameter', 'value'],
         ['name', gui.preset],
-        ['Du', (0.256 * Settings.diffusion_scale).toFixed(5)],
-        ['Dv', (0.128 * Settings.diffusion_scale).toFixed(5)],
+        ['Du', '0.25'],
+        ['Dv', '0.125'],
         ['F', Settings.feed.toFixed(5)],
         ['k', Settings.kill.toFixed(5)],
-        ['dt', '1.0'],
+        ['dt', Math.min(1 / (4 * Settings.diffusion_scale), 0.8).toFixed(4)],
         ['diffusion_scale', Settings.diffusion_scale],
         ['feed_variation', Settings.feed_variation],
         ['kill_variation', Settings.kill_variation],

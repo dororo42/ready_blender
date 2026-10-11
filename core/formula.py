@@ -183,6 +183,12 @@ class FormulaRule:
             if not lhs.startswith("delta_"):
                 raise FormulaError(
                     f"不支持的非 delta_ 左值: {lhs!r}(只支持 delta_<chem> = <expr>; 语句)")
+        # 重复 delta_<chem> 左值会静默覆盖(后者胜出),解析期直接拒绝
+        seen = set()
+        for lhs in lhs_names:
+            if lhs in seen:
+                raise FormulaError(f"重复的 delta 语句: {lhs!r}(每化学品只允许一条)")
+            seen.add(lhs)
         if chemical_names is None:
             # 按 delta 语句顺序推断化学名
             chemical_names = [n.split("_", 1)[1] for n in self.chem_names]
@@ -205,8 +211,8 @@ class FormulaRule:
             self._collect(node[2], acc)
 
     def describe_parameters(self):
-        """参数清单(默认值留空,由调用方指定)。"""
-        return [(p, None) for p in self.param_names]
+        """参数清单(默认值留空,由调用方指定;保持 Rule 的 4 元组契约)。"""
+        return [(p, None, None, None) for p in self.param_names]
 
     def update(self, fields, params, dt=1.0, field_kind="grid", nbr=None, wrap=False):
         """fields: dict 或 list。推荐 dict {chem_name: ndarray}。

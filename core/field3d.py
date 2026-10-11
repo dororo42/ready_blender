@@ -53,6 +53,8 @@ class GrayScottRule3D:
 
     def update(self, fields, params, dt=1.0, field_kind="grid3d", nbr=None, wrap=False):
         a, b = fields[0], fields[1]
+        if isinstance(params, dict):
+            wrap = bool(params.get("wrap", wrap))
         Du, Dv = params["Du"], params["Dv"]
         F, k = params["F"], params["k"]
         lap_a = laplacian_7(a, wrap)
@@ -60,6 +62,9 @@ class GrayScottRule3D:
         abb = a * b * b
         a += (Du * lap_a - abb + F * (1.0 - a)) * dt
         b += (Dv * lap_b + abb - (F + k) * b) * dt
+        # 数值防护(与 2D 规则同口径):浓度物理边界裁剪防瞬态溢出→NaN
+        np.clip(a, 0.0, 2.0, out=a)
+        np.clip(b, 0.0, 1.0, out=b)
         return fields
 
     def describe_parameters(self):

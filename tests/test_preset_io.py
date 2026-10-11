@@ -45,7 +45,7 @@ def test_invalid():
             pass
 
 
-def test_user_file_dedup(tmpdir=None):
+def test_user_file_dedup(user_file=None):
     with tempfile.TemporaryDirectory() as td:
         uf = os.path.join(td, "user_presets.json")
         d1 = export_preset_dict({"Du": 0.1, "Dv": 0.05, "F": 0.04,

@@ -39,7 +39,7 @@ def bake_uv_texture(obj, face_values, texture_name="RD_bake", res=1024):
     import bpy
     import numpy as np
     try:
-        from ..uv_raster import rasterize_uv, bake_face_values
+        from .uv_raster import rasterize_uv, bake_face_values
     except ImportError:
         from adapters.uv_raster import rasterize_uv, bake_face_values
     uvs, faces = get_uv_coords(obj)

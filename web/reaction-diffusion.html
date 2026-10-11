@@ -2383,11 +2383,15 @@ renderer.domElement.addEventListener("touchmove", touchMove, false);</script>
         name: 'linusmossberg · ' + gui.preset,
         rule: 'Gray-Scott',
         params: {
-          Du: +(0.256 * Settings.diffusion_scale).toFixed(5),
-          Dv: +(0.128 * Settings.diffusion_scale).toFixed(5),
+          // 网页着色器:dt = 1/(4*DS),扩散项 *DS*vec2(1,0.5) → 有效扩散恒为
+          // Du=0.25 / Dv=0.125,diffusion_scale 只改播放速度(反应项随 dt 缩放)。
+          // 旧实现把 0.256*DS 当扩散系数导出,DS≠0.625 时 Blender 端图案偏离预览,
+          // DS>0.98 时 Du*dt 越出显式欧拉稳定域。dt 钳 0.8 保证 Du*dt ≤ 0.2。
+          Du: 0.25,
+          Dv: 0.125,
           F: +Settings.feed.toFixed(5),
           k: +Settings.kill.toFixed(5),
-          dt: 1.0,
+          dt: +Math.min(1 / (4 * Settings.diffusion_scale), 0.8).toFixed(4),
           wrap: false
         },
         seed_region: 'uniform_sparse',
@@ -2424,11 +2428,11 @@ renderer.domElement.addEventListener("touchmove", touchMove, false);</script>
       var rows = [
         ['parameter', 'value'],
         ['name', gui.preset],
-        ['Du', (0.256 * Settings.diffusion_scale).toFixed(5)],
-        ['Dv', (0.128 * Settings.diffusion_scale).toFixed(5)],
+        ['Du', '0.25'],
+        ['Dv', '0.125'],
         ['F', Settings.feed.toFixed(5)],
         ['k', Settings.kill.toFixed(5)],
-        ['dt', '1.0'],
+        ['dt', Math.min(1 / (4 * Settings.diffusion_scale), 0.8).toFixed(4)],
         ['diffusion_scale', Settings.diffusion_scale],
         ['feed_variation', Settings.feed_variation],
         ['kill_variation', Settings.kill_variation],

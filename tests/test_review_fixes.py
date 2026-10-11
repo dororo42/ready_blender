@@ -86,6 +86,8 @@ def test_all():
     check("backend 快路径 50 步无 NaN", np.isfinite(a3).all() and np.isfinite(b3).all())
 
     print(f"\n{ok} passed, {fail} failed")
+    assert fail == 0, f"{fail} checks failed"  # pytest 下失败必须红(此前只打印不断言)
+
 
 
 

@@ -10,13 +10,13 @@ import numpy as np
 
 
 def faces_to_edges(faces: np.ndarray):
-    """三角面 → 唯一边集合。返回 (E,2) int32。"""
+    """三角面 → 唯一边集合。返回 (E,2) int32;空 faces 返回 (0,2)(防下游索引崩溃)。"""
     edges = set()
     for f in faces:
         for k in range(3):
             a, b = int(f[k]), int(f[(k + 1) % 3])
             edges.add((a, b) if a < b else (b, a))
-    return np.array(sorted(edges), dtype=np.int32)
+    return np.array(sorted(edges), dtype=np.int32).reshape(-1, 2)
 
 
 def build_edge_graph(n_verts: int, edges: np.ndarray):

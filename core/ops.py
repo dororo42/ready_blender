@@ -70,7 +70,10 @@ def laplacian_aniso_5(u: np.ndarray, wx: float, wy: float, wrap: bool = False) -
     数学:沿主方向(x)用权重 wx、垂直方向(y)用权重 wy,
       ∇²u ≈ wx·(u[i−1,j]+u[i+1,j]−2u) + wy·(u[i,j−1]+u[i,j+1]−2u)
     要求 wx+wy=2(等向情形 wx=wy=1 退化为标准 5 点拉普拉斯,逐位一致),
-    则谱半径仍为 2(wx+wy)=4 → 显式欧拉稳定域 dt·Du≤0.25 不随 Orientation 改变。
+    则常系数下谱半径为 2(wx+wy)=4 → 显式欧拉稳定域 dt·Du≤0.25。
+    注意:空间变系数(orientation_weight_maps 逐像素 wx/wy)采用 collocated
+    格式,α>0.707 时算子对称部分不再保证负半定(局部弱反扩散),由调用侧
+    clip 兜底;均匀标量权重不受影响。
     边界:wrap=True 周期;否则 clamp(零通量近似,缺失方向以自身补足)。
     净室说明:各向异性扩散系数矩阵 D=diag(wx,wy)(张量扩散),公开数值 PDE 标准构造。
     """
@@ -88,7 +91,8 @@ def laplacian_aniso_5(u: np.ndarray, wx: float, wy: float, wrap: bool = False) -
 def orientation_weights(angle_deg: float, strength: float) -> tuple[float, float]:
     """Orientation 参数 → 各向异性权重轴 wx/wy。
 
-    wx 为主扩散方向(沿 angle 轴放大),wy 垂直方向。
+    wx 为主扩散方向(沿 angle 轴放大),wy 垂直方向;
+    角度从 axis-0(数组行方向/显示竖直)起测,0°=主轴沿 axis-0,90°=沿 axis-1。
       α ∈ [0,1) 代表各向异性强度;α=0 → wx=wy=1(等向)。
       权重:wx = 1+α, wy = 1−α → wx+wy≡2(保谱半径,稳定域不变)。
     净室说明:由旋转矩阵 R(θ) 作用于张量 diag(1+α, 1−α) 的自然构造,
@@ -111,9 +115,13 @@ def orientation_angle_map(shape, kind, angle_deg=90.0):
     """Orientation 类型 → 逐像素方向场(度),与参考 rdtool 的 5 种空间模式对齐。
 
     返回与 shape 同形的 float64 数组(像素处扩散主轴角度,0~180 折叠)。
+    角度约定:0° = 主扩散轴沿 axis-0(数组行方向,显示/世界 Y = 竖直),
+    90° = 沿 axis-1(列方向 = 水平)——与 Flow 控件及 mesh 路径"竖直=局部 Y"
+    的口径一致。
     kind(不区分大小写):
-      none / linear / vert / vertical : 均匀方向 = angle_deg(默认 90°=竖直)
-      horizontal : 均匀 0°(=水平)
+      none                : 等向
+      linear / vert / vertical : 均匀 0°(主轴沿竖直)
+      horizontal          : 均匀 90°(主轴沿水平)
       radial   : 指向圆心方向(atan2(dy,dx))
       circles  : 绕圆心切线方向(radial+90°)
       swirl    : radial 与切线各半(~45°偏转)
@@ -125,9 +133,9 @@ def orientation_angle_map(shape, kind, angle_deg=90.0):
     if kind in ("none", ""):
         return np.zeros((n0, n1), dtype=np.float64)
     if kind in ("linear", "vert", "vertical"):
-        return np.full((n0, n1), float(angle_deg) % 180.0, dtype=np.float64)
-    if kind == "horizontal":
         return np.zeros((n0, n1), dtype=np.float64)
+    if kind == "horizontal":
+        return np.full((n0, n1), 90.0, dtype=np.float64)
     g = np.mgrid[0:n0, 0:n1]
     dx = (g[0].astype(np.float64) - (n0 - 1) / 2.0)
     dy = (g[1].astype(np.float64) - (n1 - 1) / 2.0)
@@ -176,7 +184,9 @@ def orientation_maps(shape, kind, strength, angle_deg=90.0):
     if strength <= 0.0 or kind in ("", "none"):
         return None, None
     if kind in _ORIENT_UNIFORM:
-        ang = float(angle_deg) if kind in ("linear", "vert", "vertical") else 0.0
+        # 0° = 主轴沿 axis-0(显示竖直,与 Flow"竖直"及 mesh 局部 Y 一致);
+        # horizontal = 90°(axis-1,水平)。angle_deg 仅保留作 API 兼容。
+        ang = 0.0 if kind in ("linear", "vert", "vertical") else 90.0
         w = orientation_weights(ang, strength)
         return float(w[0]), float(w[1])
     amap = orientation_angle_map(shape, kind, angle_deg)
@@ -212,8 +222,13 @@ def advect_semi_lagrangian(u: np.ndarray, vx: np.ndarray, vy: np.ndarray,
         np.clip(yf, 0, n1 - 1, out=yf)
     x0 = np.floor(xf).astype(np.int64)
     y0 = np.floor(yf).astype(np.int64)
-    x1 = np.minimum(x0 + 1, n0 - 1)
-    y1 = np.minimum(y0 + 1, n1 - 1)
+    # x1/y1:wrap 时周期回绕(最后一格与第 0 格插值),clamp 时截断
+    if wrap:
+        x1 = (x0 + 1) % n0
+        y1 = (y0 + 1) % n1
+    else:
+        x1 = np.minimum(x0 + 1, n0 - 1)
+        y1 = np.minimum(y0 + 1, n1 - 1)
     tx = (xf - x0).astype(np.float64)
     ty = (yf - y0).astype(np.float64)
     # 双线性插值

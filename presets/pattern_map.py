@@ -15,7 +15,7 @@ import zlib
 import numpy as np
 
 try:
-    from .fast_ops import gray_scott_step_opt
+    from ..core.fast_ops import gray_scott_step_opt
 except ImportError:  # 顶层模式(直接运行/测试)
     from core.fast_ops import gray_scott_step_opt
 

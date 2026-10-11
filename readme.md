@@ -7,6 +7,23 @@ FitzHugh-Nagumo;Rafler 2011 等)独立重新实现反应扩散算法,
 不含 GollyGang/ready(GPL-3.0)源码的任何翻译或复制。许可:GPL-3.0-or-later
 (上 extensions.blender.org 平台要求;自托管分发可另选许可,净室保证切换成本为零)。
 
+## v0.1.2 变更摘要(2026-10-11,独立审查修复,详见 docs/code-review-report-v1.7.md)
+
+- **安全**:.vti 解析加解压炸弹/文件大小/维度与数据长度校验(此前恶意文件可 OOM Blender);
+  BigEndian 文件数据按声明字节序解码(此前静默错读);用户预设加载与导入同口径校验(损坏 JSON 不再崩 UI)
+- **正确性**:修复两处包内相对导入错误(pattern_map/uv_bake,官方扩展安装路径上功能损坏);
+  2D Orientation"竖直"角度约定与 Flow/网格路径对齐;Flow 速度去掉半对角归一化
+  (2D/3D 平流强度一致,∥v∥≈强度滑杆值,强平流会真实剪切图案);图案缩放对 mesh 路径生效;
+  scale_params 子步按 max(Du,Dv) 计算;rhombille 生成器不再产生重合面;
+  linusmossberg 网页导出 Du/Dv/dt 与实际动力学对齐(DS≠0.625 时不再偏离预览,且恒在稳定域内);
+  web/rdtool.html 启动 ReferenceError 修复
+- **性能**:mesh 显示写路径拓扑缓存 + numpy 散射 + foreach_set(去掉每帧 bmesh 重建与逐元素赋值);
+  mesh 后端去掉每步 params 拷贝(取向/流动缓存真正生效);面板 O(F) 估算缓存化;
+  顶点凹凸 foreach_get/set + 按度数自动稳定子步
+- **测试/CI**:约半数"只打印不断言"的伪测试全部转为真断言;新增 vtk 加固回归 5 例;
+  CI 依赖钉扎(tests/constraints.txt)+ pip 缓存 + bpy 4.2/4.5 双版本矩阵 + py3.11 对齐;
+  打包排除 docs/ 与 web 死副本;run.py 重写为 pytest 同口径薄运行器
+
 ## 功能
 
 > **UI 交付状态标注**:以下功能中,标注 ✅ 的已接入 Blender 面板/操作符;标注 📦 的为库层就绪、UI 待后续版本接入(Python API 可用)。
@@ -22,7 +39,7 @@ FitzHugh-Nagumo;Rafler 2011 等)独立重新实现反应扩散算法,
 - **网格生成器**(M2) 📦(Python API:core.meshgen):三角 / 六角 / rhombille / 测地球面 / 环面
 - **vti/vtu IO**(M2) 📦(Python API:fileio.vtk_xml/vtk_writer):读取 Ready 生态的 93 个 pattern 文件(解析层 100% 兼容)
 - **3D 体素** ✅ 一键入口:**3D 生长管道**(⑥ 区,体素 Gray-Scott 在 Dirichlet 框架内生长 → 等值面网格新对象;文献口径 Du=0.082/Dv=0.041/F=0.035/k=0.064,参数取 ③ 区可调)+ Python API(core.field3d / adapters.volume_adapter.simulate_growth_3d);切片 / 稀疏体素输出为库层能力
-- **性能**(M3) ✅(优化内核已接入):微优化内核(1.9-2.3x)+ FFT SmoothLife;**Numba 可选后端** ✅(偏好设置自助安装,顶点域 JIT 加速,未装自动回退);compute shader 可选加速(Win/Linux,暂缓)
+- **性能**(M3) ✅(优化内核已接入):微优化内核(1.9-2.3x)+ FFT SmoothLife;**Numba 可选后端** ✅(偏好设置自助安装,顶点域 JIT 加速,未装自动回退);compute shader 可选加速(Win/Linux,暂缓);v0.1.2:mesh 显示写路径拓扑缓存+散射+foreach_set、mesh 后端参数缓存、面板估算缓存、顶点凹凸自动稳定子步
 - **RD 网页选参工具** ✅:直接移植 Karl Sims 开源 RD Tool(rdtool)的网页前端(web/rdtool-orig/,离线自包含、原版 WASM 内核、预渲染图案地图),用于快速浏览/挑选图案并对拍参数;内置"导出 Blender 预设"接口,输出与 presets.json / fileio.preset_io 同构的 JSON(含 Du/Dv/F/k/dt 与 extensions),可被 Blender"导入 JSON 预设"直接接收
 
 ## 安装
@@ -62,6 +79,10 @@ blender -b --python-expr "import bpy; bpy.ops.preferences.addon_install(filepath
 - **说明**:本工具为对 Karl Sims 开源 RD Tool(rdtool)网页前端的**直接移植**,与插件的净室核心算法相互独立(版权归原作者,详见其文件头声明)。图案地图为预渲染位图,由鼠标在 k/F 平面拖动实时连续选参
 - **Blender 适配**:`xy_to_kf()` 将平面坐标换算为实际 F/k → 与 `core.parameter.scale_params` 口径一致;`param_targets` 的 scale_all / flow_* / orientation_* 映射为 extensions.pattern_scale / flow / orientation
 - 也可用命令行临时起静态服务代替 file://:`python -m http.server 8977 --directory web/rdtool-orig`
+- 另有 `web/reaction-diffusion.html`(linusmossberg 版本地化移植,面板"打开 RD 网页工具"按钮指向它):
+  同样支持"导出 Blender 预设";v0.1.2 起导出的 Du/Dv/dt 与其着色器实际动力学对齐
+  (有效扩散恒为 Du=0.25/Dv=0.125,diffusion_scale 只影响 dt 即播放速度),
+  并始终处于 Blender 端显式欧拉稳定域内;`style_map`(空间调制参数)仅随 JSON 记录,插件暂不消费
 
 ## Ready Pattern(.vti)是什么
 
@@ -101,8 +122,8 @@ ready_blender/
 ├── ui/            # properties/operators/panels/preferences(numba 窗口)
 ├── web/           # 网页选参工具:rdtool-orig/(Karl Sims RD Tool 直接移植版)
 ├── presets/       # 12 组 Gray-Scott 预设 + 4 公式系统 9 变体(CC0)
-├── docs/          # 设计/技术报告(Karl Sims 扩展评估等)
-└── tests/         # 单测(纯 Python 运行器)
+├── docs/          # 设计/技术报告(含历次审查报告 v1.1~v1.7)
+└── tests/         # 单测(pytest 函数式;run.py 为同口径薄运行器;constraints.txt 供 CI 钉扎)
 ```
 
 ## 净室过程记录

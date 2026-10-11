@@ -722,7 +722,7 @@ document.getElementById("btnCopy").onclick = async () => {
 sF.value = P.F; sk.value = P.k; sDu.value = P.Du; sDv.value = P.Dv;
 sdt.value = P.dt; sSpeed.value = speed; sNoise.value = 0.3;
 sScale.value = P.scale; sFlowStr.value = P.flowStr; sOrientStr.value = P.orientStr;
-refact(); refreshLabels();
+rebuildExt(); refreshLabels();
 seedMain(42);
 drawMain();
 requestAnimationFrame(frame);
